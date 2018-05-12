@@ -8,13 +8,18 @@ uses
   AuxTypes, CRC32;
 
 type
+  TIFXString = UnicodeString;
+
   TIFXHashedString = record
-    Str:  String;
+    Str:  TIFXString;
     Hash: TCRC32;
   end;
 
 procedure HashString(var HashStr: TIFXHashedString);{$IFDEF CanInline} inline; {$ENDIF}
-Function HashedString(const Str: String): TIFXHashedString;{$IFDEF CanInline} inline; {$ENDIF}
+Function HashedString(const Str: TIFXString): TIFXHashedString;{$IFDEF CanInline} inline; {$ENDIF}
+
+Function IFXCompareStr(const S1,S2: TIFXString): Integer;{$IFDEF CanInline} inline; {$ENDIF}
+Function IFXCompareText(const S1,S2: TIFXString): Integer;{$IFDEF CanInline} inline; {$ENDIF}
 
 Function SameHashString(const S1,S2: TIFXHashedString; FullEval: Boolean = True): Boolean;{$IFDEF CanInline} inline; {$ENDIF}
 
@@ -25,12 +30,12 @@ type
 
   TIFXValueState = (ivsNeedsEncode,ivsNeedsDecode,ivsReady,ivsUndefined);
 
-  TIFXValueEncoding = (iveDefault,iveBase2,iveBase8,iveBase10,iveNumber,
-                       iveBase16,iveHexadecimal,iveBase32,iveBase32Hex,
-                       iveBase64,iveBase85,iveUnknown);
+  TIFXValueEncoding = (iveBase2,iveBase8,iveBase10,iveNumber,iveBase16,
+                       iveHexadecimal,iveBase32,iveBase32Hex,iveBase64,
+                       iveBase85,iveUnknown);
 
   TIFXValueData = record
-    StringValue:  String; // managed type cannot be in a variant section
+    StringValue:  TIFXString;
     case ValueType: TIFXValueType of
       ivtBool:      (BoolValue:       Boolean);
       ivtInt8:      (Int8Value:       Int8);
@@ -46,13 +51,14 @@ type
       ivtDate:      (DateValue:       TDateTime);
       ivtTime:      (TimeValue:       TDateTime);
       ivtDateTime:  (DateTimeValue:   TDateTime);
-      ivtString:    ();                           // stored in field StringValue
+      ivtString:    ();                     
       ivtBinary:    (BinaryValueSize: Integer;
                      BinaryValuePtr:  Pointer);
       ivtUnknown:   ();
   end;
 
   TIFXSettings = record
+    FullNameEval: Boolean;
   end;
   PIFXSettings = ^TIFXSettings;
 
@@ -71,12 +77,12 @@ uses
 
 procedure HashString(var HashStr: TIFXHashedString);
 begin
-HashStr.Hash := StringCRC32(HashStr.Str);
+HashStr.Hash := WideStringCRC32(HashStr.Str);
 end;
 
 //------------------------------------------------------------------------------
 
-Function HashedString(const Str: String): TIFXHashedString;
+Function HashedString(const Str: TIFXString): TIFXHashedString;
 begin
 Result.Str := Str;
 HashString(Result);
@@ -84,9 +90,32 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function IFXCompareStr(const S1,S2: TIFXString): Integer;
+begin
+{$IFDEF Unicode}
+Result := AnsiCompareStr(S1,S2);
+{$ELSE}
+Result := WideCompareStr(S1,S2);
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
+Function IFXCompareText(const S1,S2: TIFXString): Integer;
+begin
+{$IFDEF Unicode}
+Result := AnsiCompareText(S1,S2);
+{$ELSE}
+Result := WideCompareText(S1,S2);
+{$ENDIF}
+end;
+
+//------------------------------------------------------------------------------
+
 Function SameHashString(const S1, S2: TIFXHashedString; FullEval: Boolean = True): Boolean;
 begin
-Result := SameCRC32(S1.Hash,S2.Hash) and (not FullEval or AnsiSameText(S1.Str,S2.Str));
+Result := SameCRC32(S1.Hash,S2.Hash) and (not FullEval or
+{$IFDEF Unicode}AnsiSameText(S1.Str,S2.Str){$ELSE}WideSameText(S1.Str,S2.Str){$ENDIF});
 end;
 
 end.

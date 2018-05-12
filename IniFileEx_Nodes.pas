@@ -20,25 +20,27 @@ type
   private
     fSettingsPtr:   PIFXSettings;
     fName:          TIFXHashedString;
-    fComment:       String;
-    fValueStr:      String;
+    fComment:       TIFXString;
+    fValueStr:      TIFXString;
     fValueEncoding: TIFXValueEncoding;
     fValueState:    TIFXValueState;
     fValueData:     TIFXValueData;
-    procedure SetNameStr(const Value: String);
+    procedure SetNameStr(const Value: TIFXString);
+    procedure SetValueStr(const Value: TIFXString);
   protected
+
   public
-    constructor Create(const KeyName: String; SettingsPtr: PIFXSettings); overload;
+    constructor Create(const KeyName: TIFXString; SettingsPtr: PIFXSettings); overload;
     constructor Create(SettingsPtr: PIFXSettings); overload;
     destructor Destroy; override;
     property SettingsPtr: PIFXSettings read fSettingsPtr;
     property Name: TIFXHashedString read fName write fName;
-    property NameStr: String read fName.Str write SetNameStr;
-    property Comment: String read fComment write fComment;
-    //property ValueStr: String
+    property NameStr: TIFXString read fName.Str write SetNameStr;
+    property Comment: TIFXString read fComment write fComment;
+    property ValueStr: TIFXString read fValueStr write SetValueStr;
     //property ValueEncoding: fValueEncoding
     //property ValueState: TIFXValueState
-    property ValueType: TIFXValueType read fValueData.ValueType write fValueData.ValueType;
+    //property ValueType: TIFXValueType read fValueData.ValueType write fValueData.ValueType;
     property ValueData: TIFXValueData read fValueData;
   end;
 
@@ -48,28 +50,28 @@ type
     fCount:         Integer;
     fSettingsPtr:   PIFXSettings;
     fName:          TIFXHashedString;
-    fComment:       String;
+    fComment:       TIFXString;
     fOnKeyCreate:   TIFXKeyNodeEvent;
     fOnKeyDestroy:  TIFXKeyNodeEvent;
     Function GetKey(Index: Integer): TIFXKeyNode;
-    procedure SetNameStr(const Value: String);
+    procedure SetNameStr(const Value: TIFXString);
   protected
     Function GetCapacity: Integer; override;
     procedure SetCapacity(Value: Integer); override;
     Function GetCount: Integer; override;
     procedure SetCount(Value: Integer); override;
   public
-    constructor Create(const SectionName: String; SettingsPtr: PIFXSettings); overload;
+    constructor Create(const SectionName: TIFXString; SettingsPtr: PIFXSettings); overload;
     constructor Create(SettingsPtr: PIFXSettings); overload;
     destructor Destroy; override;
     Function LowIndex: Integer; override;
     Function HighIndex: Integer; override;
-    Function IndexOfKey(const KeyName: String): Integer; virtual;
-    Function FindKey(const KeyName: String; out KeyNode: TIFXKeyNode): Boolean; overload; virtual;
-    Function FindKey(const KeyName: String): TIFXKeyNode; overload; virtual;
-    Function AddKey(const KeyName: String): Integer; virtual;
+    Function IndexOfKey(const KeyName: TIFXString): Integer; virtual;
+    Function FindKey(const KeyName: TIFXString; out KeyNode: TIFXKeyNode): Boolean; overload; virtual;
+    Function FindKey(const KeyName: TIFXString): TIFXKeyNode; overload; virtual;
+    Function AddKey(const KeyName: TIFXString): Integer; virtual;
     procedure ExchangeKeys(Idx1, Idx2: Integer); virtual;
-    Function RemoveKey(const KeyName: String): Integer; virtual;
+    Function RemoveKey(const KeyName: TIFXString): Integer; virtual;
     procedure DeleteKey(Index: Integer); virtual;
     procedure ClearKeys; virtual;
     procedure SortKeys(Reversed: Boolean = False); virtual;
@@ -77,8 +79,8 @@ type
     property KeyCount: Integer read GetCount write SetCount;
     property SettingsPtr: PIFXSettings read fSettingsPtr;
     property Name: TIFXHashedString read fName write fName;
-    property NameStr: String read fName.Str write SetNameStr;
-    property Comment: String read fComment write fComment;
+    property NameStr: TIFXString read fName.Str write SetNameStr;
+    property Comment: TIFXString read fComment write fComment;
     property OnKeyCreate: TIFXKeyNodeEvent read fOnKeyCreate write fOnKeyCreate;
     property OnKeyDestroy: TIFXKeyNodeEvent read fOnKeyDestroy write fOnKeyDestroy;
   end;
@@ -89,7 +91,7 @@ type
     fSections:          array of TIFXSectionNode;
     fCount:             Integer;
     fSettingsPtr:       PIFXSettings;
-    fComment:           String;
+    fComment:           TIFXString;
     fOnKeyCreate:       TIFXKeyNodeEvent;
     fOnKeyDestroy:      TIFXKeyNodeEvent;
     fOnSectionCreate:   TIFXSectionNodeEvent;
@@ -107,29 +109,29 @@ type
     destructor Destroy; override;
     Function LowIndex: Integer; override;
     Function HighIndex: Integer; override;
-    Function IndexOfSection(const SectionName: String): Integer; virtual;
-    Function FindSection(const SectionName: String; out SectionNode: TIFXSectionNode): Boolean; overload; virtual;
-    Function FindSection(const SectionName: String): TIFXSectionNode; overload; virtual;
-    Function AddSection(const SectionName: String): Integer; virtual;
+    Function IndexOfSection(const SectionName: TIFXString): Integer; virtual;
+    Function FindSection(const SectionName: TIFXString; out SectionNode: TIFXSectionNode): Boolean; overload; virtual;
+    Function FindSection(const SectionName: TIFXString): TIFXSectionNode; overload; virtual;
+    Function AddSection(const SectionName: TIFXString): Integer; virtual;
     procedure ExchangeSections(Idx1, Idx2: Integer); virtual;
-    Function RemoveSection(const SectionName: String): Integer; virtual;
+    Function RemoveSection(const SectionName: TIFXString): Integer; virtual;
     procedure DeleteSection(Index: Integer); virtual;
     procedure ClearSections; virtual;
     procedure SortSections(Reversed: Boolean = False); virtual;
-    Function IndexOfKey(const SectionName, KeyName: String): TIFXNodeIndices; virtual;
-    Function FindKey(const SectionName, KeyName: String; out KeyNode: TIFXKeyNode): Boolean; overload; virtual;
-    Function FindKey(const SectionName, KeyName: String): TIFXKeyNode; overload; virtual;
-    Function AddKey(const SectionName, KeyName: String): TIFXNodeIndices; virtual;
-    procedure ExchangeKeys(const SectionName: String; KeyIdx1, KeyIdx2: Integer); virtual;
-    Function RemoveKey(const SectionName, KeyName: String): TIFXNodeIndices; virtual;
+    Function IndexOfKey(const SectionName, KeyName: TIFXString): TIFXNodeIndices; virtual;
+    Function FindKey(const SectionName, KeyName: TIFXString; out KeyNode: TIFXKeyNode): Boolean; overload; virtual;
+    Function FindKey(const SectionName, KeyName: TIFXString): TIFXKeyNode; overload; virtual;
+    Function AddKey(const SectionName, KeyName: TIFXString): TIFXNodeIndices; virtual;
+    procedure ExchangeKeys(const SectionName: TIFXString; KeyIdx1, KeyIdx2: Integer); virtual;
+    Function RemoveKey(const SectionName, KeyName: TIFXString): TIFXNodeIndices; virtual;
     procedure DeleteKey(SectionIndex, KeyIndex: Integer); virtual;
-    procedure ClearKeys(const SectionName: String); virtual;
-    procedure SortKeys(const SectionName: String; Reversed: Boolean = False); virtual;  
+    procedure ClearKeys(const SectionName: TIFXString); virtual;
+    procedure SortKeys(const SectionName: TIFXString; Reversed: Boolean = False); virtual;  
     procedure Clear; virtual; abstract;
     property Sections[Index: Integer]: TIFXSectionNode read GetSection; default;
     property SectionCount: Integer read GetCount write SetCount;
     property SettingsPtr: PIFXSettings read fSettingsPtr;
-    property Comment: String read fComment write fComment;
+    property Comment: TIFXString read fComment write fComment;
     property OnKeyCreate: TIFXKeyNodeEvent read fOnKeyCreate write fOnKeyCreate;
     property OnKeyDestroy: TIFXKeyNodeEvent read fOnKeyDestroy write fOnKeyDestroy;
     property OnSectionCreate: TIFXSectionNodeEvent read fOnSectionCreate write fOnSectionCreate;
@@ -141,14 +143,24 @@ implementation
 uses
   SysUtils;
 
-procedure TIFXKeyNode.SetNameStr(const Value: String);
+procedure TIFXKeyNode.SetNameStr(const Value: TIFXString);
 begin
 fName := HashedString(Value);
 end;
 
+//------------------------------------------------------------------------------
+
+procedure TIFXKeyNode.SetValueStr(const Value: TIFXString);
+begin
+fValueStr := Value;
+fValueEncoding := iveUnknown;
+fValueState := ivsNeedsDecode;
+fValueData.ValueType := ivtUnknown;
+end;
+
 //==============================================================================
 
-constructor TIFXKeyNode.Create(const KeyName: String; SettingsPtr: PIFXSettings);
+constructor TIFXKeyNode.Create(const KeyName: TIFXString; SettingsPtr: PIFXSettings);
 begin
 inherited Create;
 fSettingsPtr := SettingsPtr;
@@ -186,7 +198,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TIFXSectionNode.SetNameStr(const Value: String);
+procedure TIFXSectionNode.SetNameStr(const Value: TIFXString);
 begin
 fName := HashedString(Value);
 end;
@@ -236,7 +248,7 @@ end;
 
 //==============================================================================
 
-constructor TIFXSectionNode.Create(const SectionName: String; SettingsPtr: PIFXSettings);
+constructor TIFXSectionNode.Create(const SectionName: TIFXString; SettingsPtr: PIFXSettings);
 begin
 inherited Create;
 SetLEngth(fKeys,0);
@@ -279,7 +291,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXSectionNode.IndexOfKey(const KeyName: String): Integer;
+Function TIFXSectionNode.IndexOfKey(const KeyName: TIFXString): Integer;
 var
   i:    Integer;
   Temp: TIFXHashedString;
@@ -287,7 +299,7 @@ begin
 Result := -1;
 Temp := HashedString(KeyName);
 For i := LowIndex to HighIndex do
-  If SameHashString(fKeys[i].Name,Temp) then
+  If SameHashString(fKeys[i].Name,Temp,fSettingsPtr^.FullNameEval) then
     begin
       Result := i;
       Break{For i};
@@ -296,7 +308,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXSectionNode.FindKey(const KeyName: String; out KeyNode: TIFXKeyNode): Boolean;
+Function TIFXSectionNode.FindKey(const KeyName: TIFXString; out KeyNode: TIFXKeyNode): Boolean;
 var
   Index:  Integer;
 begin
@@ -311,7 +323,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXSectionNode.FindKey(const KeyName: String): TIFXKeyNode;
+Function TIFXSectionNode.FindKey(const KeyName: TIFXString): TIFXKeyNode;
 begin
 If not FindKey(KeyName,Result) then
   Result := nil;
@@ -319,7 +331,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXSectionNode.AddKey(const KeyName: String): Integer;
+Function TIFXSectionNode.AddKey(const KeyName: TIFXString): Integer;
 begin
 Result := IndexOfKey(KeyName);
 If Result < 0 then
@@ -353,7 +365,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXSectionNode.RemoveKey(const KeyName: String): Integer;
+Function TIFXSectionNode.RemoveKey(const KeyName: TIFXString): Integer;
 begin
 Result := IndexOfKey(KeyName);
 If Result >= 0 then
@@ -401,7 +413,7 @@ procedure TIFXSectionNode.SortKeys(Reversed: Boolean = False);
 
   procedure QuickSort(Left,Right: Integer; Coef: Integer);
   var
-    Pivot:  String;
+    Pivot:  TIFXString;
     Idx,i:  Integer;
   begin
     If Left < Right  then
@@ -410,7 +422,7 @@ procedure TIFXSectionNode.SortKeys(Reversed: Boolean = False);
         Pivot := fKeys[Right].NameStr;
         Idx := Left;
         For i := Left to Pred(Right) do
-          If (AnsiCompareText(Pivot,fKeys[i].NameStr) * Coef) > 0 then
+          If (IFXCompareText(Pivot,fKeys[i].NameStr) * Coef) > 0 then
             begin
               ExchangeKeys(i,idx);
               Inc(Idx);
@@ -535,7 +547,7 @@ end;
  
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.IndexOfSection(const SectionName: String): Integer;
+Function TIFXFileNode.IndexOfSection(const SectionName: TIFXString): Integer;
 var
   i:    Integer;
   Temp: TIFXHashedString;
@@ -543,7 +555,7 @@ begin
 Result := -1;
 Temp := HashedString(SectionName);
 For i := LowIndex to HighIndex do
-  If SameHashString(fSections[i].Name,Temp) then
+  If SameHashString(fSections[i].Name,Temp,fSettingsPtr^.FullNameEval) then
     begin
       Result := i;
       Break{For i};
@@ -552,7 +564,7 @@ end;
  
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.FindSection(const SectionName: String; out SectionNode: TIFXSectionNode): Boolean;
+Function TIFXFileNode.FindSection(const SectionName: TIFXString; out SectionNode: TIFXSectionNode): Boolean;
 var
   Index:  Integer;
 begin
@@ -567,7 +579,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.FindSection(const SectionName: String): TIFXSectionNode;
+Function TIFXFileNode.FindSection(const SectionName: TIFXString): TIFXSectionNode;
 begin
 If not FindSection(SectionName,Result) then
   Result := nil;
@@ -575,7 +587,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.AddSection(const SectionName: String): Integer;
+Function TIFXFileNode.AddSection(const SectionName: TIFXString): Integer;
 begin
 Result := IndexOfSection(SectionName);
 If Result < 0 then
@@ -611,7 +623,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.RemoveSection(const SectionName: String): Integer;
+Function TIFXFileNode.RemoveSection(const SectionName: TIFXString): Integer;
 begin
 Result := IndexOfSection(SectionName);
 If Result >= 0 then
@@ -659,7 +671,7 @@ procedure TIFXFileNode.SortSections(Reversed: Boolean = False);
 
   procedure QuickSort(Left,Right: Integer; Coef: Integer);
   var
-    Pivot:  String;
+    Pivot:  TIFXString;
     Idx,i:  Integer;
   begin
     If Left < Right  then
@@ -668,7 +680,7 @@ procedure TIFXFileNode.SortSections(Reversed: Boolean = False);
         Pivot := fSections[Right].NameStr;
         Idx := Left;
         For i := Left to Pred(Right) do
-          If (AnsiCompareText(Pivot,fSections[i].NameStr) * Coef) > 0 then
+          If (IFXCompareText(Pivot,fSections[i].NameStr) * Coef) > 0 then
             begin
               ExchangeSections(i,idx);
               Inc(Idx);
@@ -687,7 +699,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.IndexOfKey(const SectionName, KeyName: String): TIFXNodeIndices;
+Function TIFXFileNode.IndexOfKey(const SectionName, KeyName: TIFXString): TIFXNodeIndices;
 begin
 Result := IFX_INVALID_NODE_INDICES;
 Result.SectionIndex := IndexOfSection(SectionName);
@@ -697,7 +709,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.FindKey(const SectionName, KeyName: String; out KeyNode: TIFXKeyNode): Boolean;
+Function TIFXFileNode.FindKey(const SectionName, KeyName: TIFXString; out KeyNode: TIFXKeyNode): Boolean;
 var
   Section:  TIFXSectionNode;
 begin
@@ -710,7 +722,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.FindKey(const SectionName, KeyName: String): TIFXKeyNode;
+Function TIFXFileNode.FindKey(const SectionName, KeyName: TIFXString): TIFXKeyNode;
 begin
 If not FindKey(SectionName,KeyName,Result) then
   Result := nil;
@@ -718,7 +730,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.AddKey(const SectionName, KeyName: String): TIFXNodeIndices;
+Function TIFXFileNode.AddKey(const SectionName, KeyName: TIFXString): TIFXNodeIndices;
 begin
 Result := IFX_INVALID_NODE_INDICES;
 Result.SectionIndex := IndexOfSection(SectionName);
@@ -731,7 +743,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TIFXFileNode.ExchangeKeys(const SectionName: String; KeyIdx1, KeyIdx2: Integer);
+procedure TIFXFileNode.ExchangeKeys(const SectionName: TIFXString; KeyIdx1, KeyIdx2: Integer);
 var
   Section:  TIFXSectionNode;
 begin
@@ -741,7 +753,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXFileNode.RemoveKey(const SectionName, KeyName: String): TIFXNodeIndices;
+Function TIFXFileNode.RemoveKey(const SectionName, KeyName: TIFXString): TIFXNodeIndices;
 begin
 Result := IFX_INVALID_NODE_INDICES;
 Result.SectionIndex := IndexOfSection(SectionName);
@@ -761,7 +773,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TIFXFileNode.ClearKeys(const SectionName: String);
+procedure TIFXFileNode.ClearKeys(const SectionName: TIFXString);
 var
   Section:  TIFXSectionNode;
 begin
@@ -771,7 +783,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TIFXFileNode.SortKeys(const SectionName: String; Reversed: Boolean = False);
+procedure TIFXFileNode.SortKeys(const SectionName: TIFXString; Reversed: Boolean = False);
 var
   Section:  TIFXSectionNode;
 begin
