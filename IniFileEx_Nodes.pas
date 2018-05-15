@@ -71,6 +71,7 @@ type
   public
     constructor Create(const KeyName: TIFXString; SettingsPtr: PIFXSettings); overload;
     constructor Create(SettingsPtr: PIFXSettings); overload;
+    constructor CreateCopy(SourceNode: TIFXKeyNode); overload;
     destructor Destroy; override;
     procedure SetValueBool(Value: Boolean); virtual;
     procedure SetValueInt8(Value: Int8); virtual;
@@ -103,7 +104,7 @@ type
     Function GetValueDate(out Value: TDateTime): Boolean; virtual;
     Function GetValueTime(out Value: TDateTime): Boolean; virtual;
     Function GetValueDateTime(out Value: TDateTime): Boolean; virtual;
-    Function GetValueString(out Value: UnicodeString): Boolean; virtual;
+    Function GetValueString(out Value: TIFXString): Boolean; virtual;
     Function GetValueBinary(out Value: Pointer; out Size: TMemSize; MakeCopy: Boolean = False): Boolean; virtual;
     property SettingsPtr: PIFXSettings read fSettingsPtr;
     property Name: TIFXHashedString read fName write fName;
@@ -135,6 +136,7 @@ type
   public
     constructor Create(const SectionName: TIFXString; SettingsPtr: PIFXSettings); overload;
     constructor Create(SettingsPtr: PIFXSettings); overload;
+    constructor CreateCopy(SourceNode: TIFXSectionNode); overload;
     destructor Destroy; override;
     Function LowIndex: Integer; override;
     Function HighIndex: Integer; override;
@@ -142,6 +144,7 @@ type
     Function FindKey(const KeyName: TIFXString; out KeyNode: TIFXKeyNode): Boolean; overload; virtual;
     Function FindKey(const KeyName: TIFXString): TIFXKeyNode; overload; virtual;
     Function AddKey(const KeyName: TIFXString): Integer; virtual;
+    Function AddKeyNode(KeyNode: TIFXKeyNode): Integer; virtual;
     procedure ExchangeKeys(Idx1, Idx2: Integer); virtual;
     Function RemoveKey(const KeyName: TIFXString): Integer; virtual;
     procedure DeleteKey(Index: Integer); virtual;
@@ -185,6 +188,7 @@ type
     Function FindSection(const SectionName: TIFXString; out SectionNode: TIFXSectionNode): Boolean; overload; virtual;
     Function FindSection(const SectionName: TIFXString): TIFXSectionNode; overload; virtual;
     Function AddSection(const SectionName: TIFXString): Integer; virtual;
+    Function AddSectionNode(SectionNode: TIFXSectionNode): Integer; virtual;
     procedure ExchangeSections(Idx1, Idx2: Integer); virtual;
     Function RemoveSection(const SectionName: TIFXString): Integer; virtual;
     procedure DeleteSection(Index: Integer); virtual;
@@ -213,7 +217,7 @@ implementation
 
 uses
   SysUtils,
-  BinTextEnc, FloatHex, StrRect,
+  BinTextEnc, FloatHex,
 {$IF not Defined(FPC) and Defined(CanInline)}CRC32{inline expansion},{$IFEND}
   IniFileEx_Conversion;
 
@@ -324,7 +328,7 @@ end;
 procedure TIFXKeyNode.EncodeBool;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(IntToHex(Byte(fValueData.BoolValue),2));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(IntToHex(Byte(fValueData.BoolValue),2));
   iveNumber:      fValueStr := IFXBoolToStr(fValueData.BoolValue,False);
   iveDefault:     fValueStr := IFXBoolToStr(fValueData.BoolValue,True);
 else
@@ -337,9 +341,9 @@ end;
 procedure TIFXKeyNode.EncodeInt8;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(IntToHex(fValueData.Int8Value,2));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(IntToHex(fValueData.Int8Value,2));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(IntToStr(fValueData.Int8Value));
+  iveDefault:     fValueStr := StrToIFXStr(IntToStr(fValueData.Int8Value));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.Int8Value),SizeOf(Int8),False,False);
 end;
@@ -350,9 +354,9 @@ end;
 procedure TIFXKeyNode.EncodeUInt8;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(IntToHex(fValueData.UInt8Value,2));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(IntToHex(fValueData.UInt8Value,2));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(IntToStr(fValueData.UInt8Value));
+  iveDefault:     fValueStr := StrToIFXStr(IntToStr(fValueData.UInt8Value));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.UInt8Value),SizeOf(UInt8),False,False);
 end;
@@ -363,9 +367,9 @@ end;
 procedure TIFXKeyNode.EncodeInt16;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(IntToHex(fValueData.Int16Value,4));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(IntToHex(fValueData.Int16Value,4));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(IntToStr(fValueData.Int16Value));
+  iveDefault:     fValueStr := StrToIFXStr(IntToStr(fValueData.Int16Value));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.Int16Value),SizeOf(Int16),False,False);
 end;
@@ -376,9 +380,9 @@ end;
 procedure TIFXKeyNode.EncodeUInt16;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(IntToHex(fValueData.UInt16Value,4));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(IntToHex(fValueData.UInt16Value,4));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(IntToStr(fValueData.UInt16Value));
+  iveDefault:     fValueStr := StrToIFXStr(IntToStr(fValueData.UInt16Value));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.UInt16Value),SizeOf(UInt16),False,False);
 end;
@@ -389,9 +393,9 @@ end;
 procedure TIFXKeyNode.EncodeInt32;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(IntToHex(fValueData.Int32Value,8));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(IntToHex(fValueData.Int32Value,8));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(IntToStr(fValueData.Int32Value));
+  iveDefault:     fValueStr := StrToIFXStr(IntToStr(fValueData.Int32Value));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.Int32Value),SizeOf(Int32),False,False);
 end;
@@ -402,9 +406,9 @@ end;
 procedure TIFXKeyNode.EncodeUInt32;  
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(IntToHex(fValueData.UInt32Value,8));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(IntToHex(fValueData.UInt32Value,8));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(IntToStr(fValueData.UInt32Value));
+  iveDefault:     fValueStr := StrToIFXStr(IntToStr(fValueData.UInt32Value));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.UInt32Value),SizeOf(UInt32),False,False);
 end;
@@ -415,9 +419,9 @@ end;
 procedure TIFXKeyNode.EncodeInt64;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(IntToHex(fValueData.Int64Value,16));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(IntToHex(fValueData.Int64Value,16));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(IntToStr(fValueData.Int64Value));
+  iveDefault:     fValueStr := StrToIFXStr(IntToStr(fValueData.Int64Value));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.Int64Value),SizeOf(Int64),False,False);
 end;
@@ -428,7 +432,7 @@ end;
 procedure TIFXKeyNode.EncodeUInt64;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(IntToHex(fValueData.UInt64Value,16));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(IntToHex(fValueData.UInt64Value,16));
   iveNumber,
   iveDefault:     fValueStr := IFXUInt64ToStr(fValueData.UInt64Value);
 else
@@ -441,9 +445,9 @@ end;
 procedure TIFXKeyNode.EncodeFloat32;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(FloatToHex(fValueData.Float32Value));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(FloatToHex(fValueData.Float32Value));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(FloatToStr(fValueData.Float32Value,fSettingsPtr^.FormatSettings));
+  iveDefault:     fValueStr := StrToIFXStr(FloatToStr(fValueData.Float32Value,fSettingsPtr^.FormatSettings));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.Float32Value),SizeOf(Float32),False,False);
 end;
@@ -454,9 +458,9 @@ end;
 procedure TIFXKeyNode.EncodeFloat64;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(FloatToHex(fValueData.Float64Value));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(FloatToHex(fValueData.Float64Value));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(FloatToStr(fValueData.Float64Value,fSettingsPtr^.FormatSettings));
+  iveDefault:     fValueStr := StrToIFXStr(FloatToStr(fValueData.Float64Value,fSettingsPtr^.FormatSettings));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.Float64Value),SizeOf(Float64),False,False);
 end;
@@ -467,9 +471,9 @@ end;
 procedure TIFXKeyNode.EncodeDate;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(FloatToHex(fValueData.Float64Value));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(FloatToHex(fValueData.Float64Value));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(DateToStr(fValueData.DateValue,fSettingsPtr^.FormatSettings));
+  iveDefault:     fValueStr := StrToIFXStr(DateToStr(fValueData.DateValue,fSettingsPtr^.FormatSettings));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.Float64Value),SizeOf(Float64),False,False);
 end;
@@ -480,9 +484,9 @@ end;
 procedure TIFXKeyNode.EncodeTime;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(FloatToHex(fValueData.Float64Value));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(FloatToHex(fValueData.Float64Value));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(TimeToStr(fValueData.DateValue,fSettingsPtr^.FormatSettings));
+  iveDefault:     fValueStr := StrToIFXStr(TimeToStr(fValueData.DateValue,fSettingsPtr^.FormatSettings));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.Float64Value),SizeOf(Float64),False,False);
 end;
@@ -493,9 +497,9 @@ end;
 procedure TIFXKeyNode.EncodeDateTime;
 begin
 case fValueEncoding of
-  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToUnicode(FloatToHex(fValueData.Float64Value));
+  iveHexadecimal: fValueStr := IFX_ENC_STR_HEXADECIMAL + StrToIFXStr(FloatToHex(fValueData.Float64Value));
   iveNumber,
-  iveDefault:     fValueStr := StrToUnicode(DateTimeToStr(fValueData.DateValue,fSettingsPtr^.FormatSettings));
+  iveDefault:     fValueStr := StrToIFXStr(DateTimeToStr(fValueData.DateValue,fSettingsPtr^.FormatSettings));
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),Addr(fValueData.Float64Value),SizeOf(Float64),False,False);
 end;
@@ -507,12 +511,12 @@ procedure TIFXKeyNode.EncodeString;
 begin
 case fValueEncoding of
   iveHexadecimal,
-  iveNumber:      fValueStr := WideEncode(bteHexadecimal,PUnicodeChar(fValueData.StringValue),
-                                          Length(fValueData.StringValue) * SizeOf(UnicodeChar),False,False);
+  iveNumber:      fValueStr := WideEncode(bteHexadecimal,PIFXChar(fValueData.StringValue),
+                                          Length(fValueData.StringValue) * SizeOf(TIFXChar),False,False);
   iveDefault:     fValueStr := IFXEncodeString(fValueData.StringValue);
 else
-  fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),PUnicodeChar(fValueData.StringValue),
-                          Length(fValueData.StringValue) * SizeOf(UnicodeChar),False,False);
+  fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),PIFXChar(fValueData.StringValue),
+                          Length(fValueData.StringValue) * SizeOf(TIFXChar),False,False);
 end;
 end;
 
@@ -579,7 +583,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryStrToInt(UnicodeToStr(fValueStr),TempInt) then
+      If TryStrToInt(IFXStrToStr(fValueStr),TempInt) then
         begin
           fValueData.BoolValue := TempInt <> 0;
           fValueEncoding := iveHexadecimal;
@@ -593,7 +597,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
     '0'..'9','-':
-      If TryStrToInt(UnicodeToStr(fValueStr),TempInt) then
+      If TryStrToInt(IFXStrToStr(fValueStr),TempInt) then
         begin
           fValueData.BoolValue := TempInt <> 0;
           fValueEncoding := iveNumber;
@@ -618,7 +622,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryStrToInt(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(Int8)) and (TempInt <= High(Int8))) then
+      If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(Int8)) and (TempInt <= High(Int8))) then
         begin
           fValueData.Int8Value := Int8(TempInt);
           fValueEncoding := iveHexadecimal;
@@ -631,7 +635,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToInt(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(Int8)) and (TempInt <= High(Int8))) then
+    If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(Int8)) and (TempInt <= High(Int8))) then
       begin
         fValueData.Int8Value := Int8(TempInt);
         fValueEncoding := iveDefault;
@@ -650,7 +654,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryStrToInt(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt8)) and (TempInt <= High(UInt8))) then
+      If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt8)) and (TempInt <= High(UInt8))) then
         begin
           fValueData.UInt8Value := UInt8(TempInt);
           fValueEncoding := iveHexadecimal;
@@ -663,7 +667,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToInt(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt8)) and (TempInt <= High(UInt8))) then
+    If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt8)) and (TempInt <= High(UInt8))) then
       begin
         fValueData.UInt8Value := UInt8(TempInt);
         fValueEncoding := iveDefault;
@@ -682,7 +686,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryStrToInt(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(Int16)) and (TempInt <= High(Int16))) then
+      If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(Int16)) and (TempInt <= High(Int16))) then
         begin
           fValueData.Int16Value := Int16(TempInt);
           fValueEncoding := iveHexadecimal;
@@ -695,7 +699,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToInt(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(Int16)) and (TempInt <= High(Int16))) then
+    If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(Int16)) and (TempInt <= High(Int16))) then
       begin
         fValueData.Int16Value := Int16(TempInt);
         fValueEncoding := iveDefault;
@@ -714,7 +718,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryStrToInt(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt16)) and (TempInt <= High(UInt16))) then
+      If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt16)) and (TempInt <= High(UInt16))) then
         begin
           fValueData.UInt16Value := UInt16(TempInt);
           fValueEncoding := iveHexadecimal;
@@ -727,7 +731,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToInt(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt16)) and (TempInt <= High(UInt16))) then
+    If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt16)) and (TempInt <= High(UInt16))) then
       begin
         fValueData.UInt16Value := UInt16(TempInt);
         fValueEncoding := iveDefault;
@@ -746,7 +750,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryStrToInt64(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(Int32)) and (TempInt <= High(Int32))) then
+      If TryStrToInt64(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(Int32)) and (TempInt <= High(Int32))) then
         begin
           fValueData.Int32Value := Int32(TempInt);
           fValueEncoding := iveHexadecimal;
@@ -759,7 +763,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToInt64(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(Int32)) and (TempInt <= High(Int32))) then
+    If TryStrToInt64(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(Int32)) and (TempInt <= High(Int32))) then
       begin
         fValueData.Int32Value := Int32(TempInt);
         fValueEncoding := iveDefault;
@@ -778,7 +782,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryStrToInt64(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt32)) and (TempInt <= High(UInt32))) then
+      If TryStrToInt64(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt32)) and (TempInt <= High(UInt32))) then
         begin
           fValueData.UInt32Value := UInt32(TempInt);
           fValueEncoding := iveHexadecimal;
@@ -791,7 +795,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToInt64(UnicodeToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt32)) and (TempInt <= High(UInt32))) then
+    If TryStrToInt64(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt32)) and (TempInt <= High(UInt32))) then
       begin
         fValueData.UInt32Value := UInt32(TempInt);
         fValueEncoding := iveDefault;
@@ -810,7 +814,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryStrToInt64(UnicodeToStr(fValueStr),TempInt) then
+      If TryStrToInt64(IFXStrToStr(fValueStr),TempInt) then
         begin
           fValueData.Int64Value := TempInt;
           fValueEncoding := iveHexadecimal;
@@ -823,7 +827,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToInt64(UnicodeToStr(fValueStr),TempInt) then
+    If TryStrToInt64(IFXStrToStr(fValueStr),TempInt) then
       begin
         fValueData.Int64Value := TempInt;
         fValueEncoding := iveDefault;
@@ -842,7 +846,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryStrToInt64(UnicodeToStr(fValueStr),Int64(TempInt)) then
+      If TryStrToInt64(IFXStrToStr(fValueStr),Int64(TempInt)) then
         begin
           fValueData.UInt64Value := TempInt;
           fValueEncoding := iveHexadecimal;
@@ -874,7 +878,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryHexToSingle(UnicodeToStr(fValueStr),TempFloat) then
+      If TryHexToSingle(IFXStrToStr(fValueStr),TempFloat) then
         begin
           fValueData.Float32Value := TempFloat;
           fValueEncoding := iveHexadecimal;
@@ -887,7 +891,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToFloat(UnicodeToStr(fValueStr),TempFloat,fSettingsPtr^.FormatSettings) then
+    If TryStrToFloat(IFXStrToStr(fValueStr),TempFloat,fSettingsPtr^.FormatSettings) then
       begin
         fValueData.Float32Value := TempFloat;
         fValueEncoding := iveDefault;
@@ -906,7 +910,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryHexToDouble(UnicodeToStr(fValueStr),TempFloat) then
+      If TryHexToDouble(IFXStrToStr(fValueStr),TempFloat) then
         begin
           fValueData.Float64Value := TempFloat;
           fValueEncoding := iveHexadecimal;
@@ -919,7 +923,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToFloat(UnicodeToStr(fValueStr),TempFloat,fSettingsPtr^.FormatSettings) then
+    If TryStrToFloat(IFXStrToStr(fValueStr),TempFloat,fSettingsPtr^.FormatSettings) then
       begin
         fValueData.Float64Value := TempFloat;
         fValueEncoding := iveDefault;
@@ -938,7 +942,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryHexToDouble(UnicodeToStr(fValueStr),TempFloat) then
+      If TryHexToDouble(IFXStrToStr(fValueStr),TempFloat) then
         begin
           fValueData.DateValue := TDateTime(TempFloat);
           fValueEncoding := iveHexadecimal;
@@ -951,7 +955,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToDate(UnicodeToStr(fValueStr),TDateTime(TempFloat),fSettingsPtr^.FormatSettings) then
+    If TryStrToDate(IFXStrToStr(fValueStr),TDateTime(TempFloat),fSettingsPtr^.FormatSettings) then
       begin
         fValueData.DateValue := TDateTime(TempFloat);
         fValueEncoding := iveDefault;
@@ -970,7 +974,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryHexToDouble(UnicodeToStr(fValueStr),TempFloat) then
+      If TryHexToDouble(IFXStrToStr(fValueStr),TempFloat) then
         begin
           fValueData.TimeValue := TDateTime(TempFloat);
           fValueEncoding := iveHexadecimal;
@@ -983,7 +987,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToTime(UnicodeToStr(fValueStr),TDateTime(TempFloat),fSettingsPtr^.FormatSettings) then
+    If TryStrToTime(IFXStrToStr(fValueStr),TDateTime(TempFloat),fSettingsPtr^.FormatSettings) then
       begin
         fValueData.TimeValue := TDateTime(TempFloat);
         fValueEncoding := iveDefault;
@@ -1002,7 +1006,7 @@ begin
 If Length(fValueStr) > 0 then
   case fValueStr[1] of
     IFX_ENC_STR_HEXADECIMAL:
-      If TryHexToDouble(UnicodeToStr(fValueStr),TempFloat) then
+      If TryHexToDouble(IFXStrToStr(fValueStr),TempFloat) then
         begin
           fValueData.DateTimeValue := TDateTime(TempFloat);
           fValueEncoding := iveHexadecimal;
@@ -1015,7 +1019,7 @@ If Length(fValueStr) > 0 then
           fValueState := ivsReady;
         end;
   else
-    If TryStrToDateTime(UnicodeToStr(fValueStr),TDateTime(TempFloat),fSettingsPtr^.FormatSettings) then
+    If TryStrToDateTime(IFXStrToStr(fValueStr),TDateTime(TempFloat),fSettingsPtr^.FormatSettings) then
       begin
         fValueData.DateTimeValue := TDateTime(TempFloat);
         fValueEncoding := iveDefault;
@@ -1039,8 +1043,8 @@ If Length(fValueStr) > 0 then
       begin
         TempMem := WideDecode(fValueStr,TempSize,Encoding);
         try
-          SetLength(fValueData.StringValue,TempSize div SizeOf(UnicodeChar));
-          Move(TempMem^,PUnicodeChar(fValueData.StringValue)^,Length(fValueData.StringValue) * SizeOf(UnicodeChar));
+          SetLength(fValueData.StringValue,TempSize div SizeOf(TIFXChar));
+          Move(TempMem^,PIFXChar(fValueData.StringValue)^,Length(fValueData.StringValue) * SizeOf(TIFXChar));
         finally
           FreeMem(TempMem,TempSize);
         end;
@@ -1081,11 +1085,31 @@ fValueState := ivsUndefined;
 fValueData.ValueType := ivtString;
 end;
 
-//------------------------------------------------------------------------------
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 constructor TIFXKeyNode.Create(SettingsPtr: PIFXSettings);
 begin
 Create('',SettingsPtr);
+end;
+
+//------------------------------------------------------------------------------
+
+constructor TIFXKeyNode.CreateCopy(SourceNode: TIFXKeyNode);
+var
+  TempPtr:  Pointer;
+begin
+Create(SourceNode.NameStr,SourceNode.fSettingsPtr);
+fComment := SourceNode.fComment;
+fValueStr := SourceNode.fValueStr;
+fValueEncoding := SourceNode.fValueEncoding;
+fValueState := SourceNode.fValueState;
+fValueData := SourceNode.fValueData;
+If (fValueData.ValueType = ivtBinary) and fValueData.BinaryValueOwned then
+  begin
+    GetMem(TempPtr,fValueData.BinaryValueSize);
+    Move(fValueData.BinaryValuePtr^,TempPtr^,fValueData.BinaryValueSize);
+    fValueData.BinaryValuePtr := TempPtr;
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -1352,7 +1376,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXKeyNode.GetValueString(out Value: UnicodeString): Boolean;
+Function TIFXKeyNode.GetValueString(out Value: TIFXString): Boolean;
 begin
 Result := GettingValue(ivtString);
 Value := fValueData.StringValue;
@@ -1448,11 +1472,32 @@ fOnKeyCreate := nil;
 fOnKeyDestroy := nil;
 end;
 
-//------------------------------------------------------------------------------
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 constructor TIFXSectionNode.Create(SettingsPtr: PIFXSettings);
 begin
 Create('',SettingsPtr);
+end;
+
+//------------------------------------------------------------------------------
+
+constructor TIFXSectionNode.CreateCopy(SourceNode: TIFXSectionNode);
+var
+  i:        Integer;
+  TempKey:  TIFXKeyNode;
+begin
+Create(SourceNode.NameStr,SourceNode.fSettingsPtr);
+fComment := SourceNode.fComment;
+fOnKeyCreate := SourceNode.fOnKeyCreate;
+fOnKeyDestroy := SourceNode.fOnKeyDestroy;
+// copy all keys from source section
+For i := SourceNode.LowIndex to SourceNode.HighIndex do
+  begin
+    TempKey := TIFXKeyNode.CreateCopy(SourceNode[i]);
+    AddKeyNode(TempKey);
+    If Assigned(fOnKeyCreate) then
+      fOnKeyCreate(Self,Self,TempKey);
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -1531,6 +1576,16 @@ If Result < 0 then
     If Assigned(fOnKeyCreate) then
       fOnKeyCreate(Self,Self,fKeys[Result]);
   end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIFXSectionNode.AddKeyNode(KeyNode: TIFXKeyNode): Integer;
+begin
+Grow;
+Result := fCount;
+fKeys[Result] := KeyNode;
+Inc(fCount);
 end;
 
 //------------------------------------------------------------------------------
@@ -1684,19 +1739,23 @@ end;
 
 //------------------------------------------------------------------------------
 
+{$IFDEF FPCDWM}{$PUSH}W5024{$ENDIF}
 procedure TIFXFileNode.KeyCreateHandler(Sender: TObject; Section: TIFXSectionNode; Key: TIFXKeyNode);
 begin
 If Assigned(fOnKeyCreate) then
   fOnKeyCreate(Self,Section,Key);
 end;
+{$IFDEF FPCDWM}{$POP}{$ENDIF}
 
 //------------------------------------------------------------------------------
 
+{$IFDEF FPCDWM}{$PUSH}W5024{$ENDIF}
 procedure TIFXFileNode.KeyDestroyHandler(Sender: TObject; Section: TIFXSectionNode; Key: TIFXKeyNode);
 begin
 If Assigned(fOnKeyDestroy) then
   fOnKeyDestroy(Self,Section,Key);
 end;
+{$IFDEF FPCDWM}{$POP}{$ENDIF}
 
 //==============================================================================
 
@@ -1791,6 +1850,18 @@ If Result < 0 then
     If Assigned(fOnSectionCreate) then
       fOnSectionCreate(Self,fSections[Result]);
   end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIFXFileNode.AddSectionNode(SectionNode: TIFXSectionNode): Integer;
+begin
+Grow;
+Result := fCount;
+fSections[Result] := SectionNode;
+fSections[Result].OnKeyCreate := KeyCreateHandler;
+fSections[Result].OnKeyDestroy := KeyDestroyHandler;
+Inc(fCount);
 end;
 
 //------------------------------------------------------------------------------

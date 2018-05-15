@@ -10,7 +10,12 @@ uses
 
 type
   TIFXString = UnicodeString;
+  TIFXChar   = UnicodeChar;       PIFXChar = ^TIFXChar;
 
+Function IFXStrToStr(const IFXStr: TIFXString): String;{$IFDEF CanInline} inline; {$ENDIF}
+Function StrToIFXStr(const Str: String): TIFXString;{$IFDEF CanInline} inline; {$ENDIF}
+
+type
   TIFXHashedString = record
     Str:  TIFXString;
     Hash: TCRC32;
@@ -60,10 +65,13 @@ type
       ivtString:    ();
   end;
 
+  TIFXDuplicityBehavior = (idbDrop,idbReplace,idbRenameOld,idbRenameNew);
+
   TIFXSettings = record
-    FormatSettings: TFormatSettings;
-    FullNameEval:   Boolean;
-    ReadOnly:       Boolean;
+    FormatSettings:     TFormatSettings;
+    FullNameEval:       Boolean;
+    ReadOnly:           Boolean;
+    DuplicityBehavior:  TIFXDuplicityBehavior;
   end;
   PIFXSettings = ^TIFXSettings;
 
@@ -75,19 +83,45 @@ type
     KeyIndex:     Integer;
   end;
 
+Function IFXNodeIndicesValid(Indices: TIFXNodeIndices): Boolean;
+
 const
   IFX_INVALID_NODE_INDICES: TIFXNodeIndices = (SectionIndex: -1; KeyIndex: -1);
 
-  IFX_ENC_STR_HEXADECIMAL = UnicodeChar('$');
-  IFX_ENC_STR_ESCAPECHAR  = UnicodeChar('\');
-  IFX_ENC_STR_QUOTECHAR   = UnicodeChar('"');
-  IFX_ENC_STR_CHARNUM     = UnicodeChar('#');
+  IFX_ENC_STR_HEXADECIMAL = TIFXChar('$');
+  IFX_ENC_STR_ESCAPECHAR  = TIFXChar('\');
+  IFX_ENC_STR_QUOTECHAR   = TIFXChar('"');
+  IFX_ENC_STR_CHARNUM     = TIFXChar('#');
+
+  IFX_DUPRENSTR_NEW = TIFXString('_new');
+  IFX_DUPRENSTR_OLD = TIFXString('_old');
 
 implementation
 
+uses
+  StrRect;
+
+Function IFXStrToStr(const IFXStr: TIFXString): String;
+begin
+Result := UnicodeToStr(IFXStr);
+end;
+
+//------------------------------------------------------------------------------
+
+Function StrToIFXStr(const Str: String): TIFXString;
+begin
+Result := StrToUnicode(Str);
+end;
+
+//------------------------------------------------------------------------------
+
 procedure IFXHashString(var HashStr: TIFXHashedString);
 begin
-HashStr.Hash := WideStringCRC32(HashStr.Str);
+{$IFDEF Unicode}
+HashStr.Hash := WideStringCRC32(AnsiLowerCase(HashStr.Str));
+{$ELSE}
+HashStr.Hash := WideStringCRC32(WideLowerCase(HashStr.Str));
+{$ENDIF}
 end;
 
 //------------------------------------------------------------------------------
@@ -125,7 +159,11 @@ end;
 Function IFXSameHashString(const S1, S2: TIFXHashedString; FullEval: Boolean = True): Boolean;
 begin
 Result := SameCRC32(S1.Hash,S2.Hash) and (not FullEval or
-{$IFDEF Unicode}AnsiSameText(S1.Str,S2.Str){$ELSE}WideSameText(S1.Str,S2.Str){$ENDIF});
+{$IFDEF Unicode}
+  AnsiSameText(S1.Str,S2.Str)
+{$ELSE}
+  WideSameText(S1.Str,S2.Str)
+{$ENDIF});
 end;
 
 //------------------------------------------------------------------------------
@@ -195,6 +233,14 @@ For i := Low(def_LongDayNames) to High(def_LongDayNames) do
 // other fields beyond formatting  
 Sett.FullNameEval := True;
 Sett.ReadOnly := False;
+Sett.DuplicityBehavior := idbDrop;
+end;
+
+//------------------------------------------------------------------------------
+
+Function IFXNodeIndicesValid(Indices: TIFXNodeIndices): Boolean;
+begin
+Result := (Indices.SectionIndex >= 0) and (Indices.KeyIndex >= 0);
 end;
 
 end.

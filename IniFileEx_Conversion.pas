@@ -21,8 +21,7 @@ Function IFXDecodeString(const Str: TIFXString): TIFXString;
 implementation
 
 uses
-  SysUtils,
-  StrRect;
+  SysUtils;
 
 const
   UInt64BitTable: array[0..63] of TIFXString = (
@@ -51,7 +50,7 @@ var
   CharOrd:  Integer;
   Carry:    Integer;
 begin
-Result := StrToUnicode(StringOfChar('0',Length(UInt64BitTable[0])));
+Result := StrToIFXStr(StringOfChar('0',Length(UInt64BitTable[0])));
 Carry := 0;
 For i := 0 to 63 do
   If ((Value shr i) and 1) <> 0 then
@@ -59,7 +58,7 @@ For i := 0 to 63 do
       begin
         CharOrd := (Ord(Result[j]) - Ord('0')) + (Ord(UInt64BitTable[i][j]) - Ord('0')) + Carry;
         Carry := CharOrd div 10;
-        Result[j] := UnicodeChar(Ord('0') + CharOrd mod 10);
+        Result[j] := TIFXChar(Ord('0') + CharOrd mod 10);
       end;
 // remove leading zeroes
 i := 0;
@@ -111,7 +110,7 @@ var
             Result := -1;
           end
         else Result := 0;
-        Res[ii] := UnicodeChar(Abs(CharVal) + Ord('0'));
+        Res[ii] := TIFXChar(Abs(CharVal) + Ord('0'));
       end;
     If Result < 0 then
       Res := S1;  
@@ -121,7 +120,7 @@ begin
 Result := 0;
 // rectify string
 If Length(Str) < Length(UInt64BitTable[0]) then
-  TempStr := StrToUnicode(StringOfChar('0',Length(UInt64BitTable[0]) - Length(Str))) + Str
+  TempStr := StrToIFXStr(StringOfChar('0',Length(UInt64BitTable[0]) - Length(Str))) + Str
 else If Length(Str) > Length(UInt64BitTable[0]) then
   raise EConvertError.CreateFmt('IFXStrToUInt64: "%s" is not a valid integer string.',[Str])
 else
@@ -233,7 +232,7 @@ For i := 1 to Length(Str) do
       begin
         Result[Temp] := IFX_ENC_STR_ESCAPECHAR;
         Result[Temp + 1] := IFX_ENC_STR_CHARNUM;
-        StrTemp := StrToUnicode(IntToHex(Ord(Str[i]),4));
+        StrTemp := StrToIFXStr(IntToHex(Ord(Str[i]),4));
         Result[Temp + 2] := StrTemp[1];
         Result[Temp + 3] := StrTemp[2];
         Result[Temp + 4] := StrTemp[3];
@@ -276,7 +275,7 @@ var
   i,ResPos: TStrSize;
   Temp:     Integer;
 
-  procedure SetAndAdvance(NewChar: UnicodeChar; SrcShift, ResShift: Integer);
+  procedure SetAndAdvance(NewChar: TIFXChar; SrcShift, ResShift: Integer);
   begin
     Result[ResPos] := NewChar;
     Inc(i,SrcShift);
@@ -302,8 +301,8 @@ If Length(Str) > 0 then
               IFX_ENC_STR_CHARNUM:
                 If (i + 4) < Length(Str) then
                   begin
-                    If TryStrToInt(UnicodeToStr(IFX_ENC_STR_HEXADECIMAL + Copy(Str,i + 2,4)),Temp) then
-                      SetAndAdvance(UnicodeChar(Temp),6,1)
+                    If TryStrToInt(IFXStrToStr(IFX_ENC_STR_HEXADECIMAL + Copy(Str,i + 2,4)),Temp) then
+                      SetAndAdvance(TIFXChar(Temp),6,1)
                     else
                       Break{while...};
                   end
