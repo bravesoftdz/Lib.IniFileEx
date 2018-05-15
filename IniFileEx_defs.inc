@@ -1,7 +1,3 @@
-{$IF not(defined(MSWINDOWS) or defined(WINDOWS))}
-  {$MESSAGE FATAL 'Unsupported operating system.'}
-{$IFEND}
-
 {$IFDEF FPC}
   {$MODE ObjFPC}{$H+}
   {$MODESWITCH CLASSICPROCVARS+}
@@ -16,3 +12,5 @@
     {$UNDEF CanInline}
   {$IFEND}
 {$ENDIF}
+
+{$DEFINE AllowLowLevelAccess}

@@ -49,8 +49,7 @@ type
     procedure EncodeTime; virtual;
     procedure EncodeDateTime; virtual;
     procedure EncodeString; virtual;
-    procedure EncodeBinary; virtual;
-
+    procedure EncodeBinary; virtual; 
     Function GettingValue(ValueType: TIFXValueType): Boolean; virtual;
     procedure DecodeValue; virtual;
     procedure DecodeBool; virtual;
@@ -215,6 +214,7 @@ implementation
 uses
   SysUtils,
   BinTextEnc, FloatHex, StrRect,
+{$IF not Defined(FPC) and Defined(CanInline)}CRC32{inline expansion},{$IFEND}
   IniFileEx_Conversion;
 
 {$IFDEF FPC_DisableWarns}
@@ -522,8 +522,8 @@ procedure TIFXKeyNode.EncodeBinary;
 begin
 case fValueEncoding of
   iveHexadecimal,
-  iveNumber,
-  iveDefault:     fValueStr := WideEncode(bteHexadecimal,fValueData.BinaryValuePtr,fValueData.BinaryValueSize,False,False);
+  iveNumber:      fValueStr := WideEncode(bteHexadecimal,fValueData.BinaryValuePtr,fValueData.BinaryValueSize,False,False);
+  iveDefault:     fValueStr := WideEncode(bteBase64,fValueData.BinaryValuePtr,fValueData.BinaryValueSize,False,False);
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),fValueData.BinaryValuePtr,fValueData.BinaryValueSize,False,False);
 end;

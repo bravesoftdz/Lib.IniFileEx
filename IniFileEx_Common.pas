@@ -63,6 +63,7 @@ type
   TIFXSettings = record
     FormatSettings: TFormatSettings;
     FullNameEval:   Boolean;
+    ReadOnly:       Boolean;
   end;
   PIFXSettings = ^TIFXSettings;
 
@@ -83,9 +84,6 @@ const
   IFX_ENC_STR_CHARNUM     = UnicodeChar('#');
 
 implementation
-
-uses
-  Windows;
 
 procedure IFXHashString(var HashStr: TIFXHashedString);
 begin
@@ -161,10 +159,22 @@ end;
 //------------------------------------------------------------------------------
 
 procedure IFXInitSettings(var Sett: TIFXSettings);
+const
+  def_ShortMonthNames: array[1..12] of String =
+    ('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
+  def_LongMonthNames: array[1..12] of String =
+    ('January','February','March','April','May','June','July','August','September','October','November','December');
+  def_ShortDayNames: array[1..7] of String  =
+    ('Sun','Mon','Tue','Wed','Thu','Fri','Sat');
+  def_LongDayNames: array[1..7] of String  =
+    ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday');
+var
+  i:  Integer;
 begin
-{$WARN SYMBOL_PLATFORM OFF}
-GetLocaleFormatSettings(LOCALE_USER_DEFAULT,Sett.FormatSettings);
-{$WARN SYMBOL_PLATFORM ON}
+{
+  Delphi changed order of fields in TFormatSettings somewhere along the line,
+  so I cannot use constant and assign everything in one step, yay!
+}
 Sett.FormatSettings.ThousandSeparator := #0;
 Sett.FormatSettings.DecimalSeparator := '.';
 Sett.FormatSettings.DateSeparator := '-';
@@ -173,7 +183,18 @@ Sett.FormatSettings.ShortDateFormat := 'yyyy"-"mm"-"dd';
 Sett.FormatSettings.LongDateFormat := 'yyyy"-"mm"-"dd';
 Sett.FormatSettings.ShortTimeFormat := 'hh":"nn":"ss';
 Sett.FormatSettings.LongTimeFormat := 'hh":"nn":"ss';
+Sett.FormatSettings.TwoDigitYearCenturyWindow := 50;
+For i := Low(def_ShortMonthNames) to High(def_ShortMonthNames) do
+  Sett.FormatSettings.ShortMonthNames[i] := def_ShortMonthNames[i];
+For i := Low(def_LongMonthNames) to High(def_LongMonthNames) do
+  Sett.FormatSettings.LongMonthNames[i] := def_LongMonthNames[i];
+For i := Low(def_ShortDayNames) to High(def_ShortDayNames) do
+  Sett.FormatSettings.ShortDayNames[i] := def_ShortDayNames[i];
+For i := Low(def_LongDayNames) to High(def_LongDayNames) do
+  Sett.FormatSettings.LongDayNames[i] := def_LongDayNames[i];
+// other fields beyond formatting  
 Sett.FullNameEval := True;
+Sett.ReadOnly := False;
 end;
 
 end.
