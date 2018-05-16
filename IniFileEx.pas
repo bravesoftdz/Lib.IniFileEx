@@ -720,7 +720,9 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  Result := KeyNode.ValueState;
+  Result := KeyNode.ValueState
+else
+  raise Exception.CreateFmt('TIniFileEx.GetValueState: Key (%s:%s) not found.',[Section,Key]);
 end;
 
 //------------------------------------------------------------------------------
@@ -730,7 +732,9 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  Result := KeyNode.ValueEncoding;
+  Result := KeyNode.ValueEncoding
+else
+  raise Exception.CreateFmt('TIniFileEx.GetValueEncoding: Key (%s:%s) not found.',[Section,Key]);
 end;
 
 //------------------------------------------------------------------------------
@@ -751,7 +755,9 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  Result := KeyNode.ValueType;
+  Result := KeyNode.ValueType
+else
+  raise Exception.CreateFmt('TIniFileEx.GetValueType: Key (%s:%s) not found.',[Section,Key]);
 end;
 
 //------------------------------------------------------------------------------
