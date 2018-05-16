@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, 
-  AuxClasses,
+  AuxTypes, AuxClasses,
   IniFileEx_Common, IniFileEx_Nodes;
 
 type
@@ -33,6 +33,7 @@ type
     procedure SectionDestroyHandler(Sender: TObject; Section: TIFXSectionNode); virtual;
     procedure KeyCreateHandler(Sender: TObject; Section: TIFXSectionNode; Key: TIFXKeyNode); virtual;
     procedure KeyDestroyHandler(Sender: TObject; Section: TIFXSectionNode; Key: TIFXKeyNode); virtual;
+    Function WritingValue(const Section, Key: TIFXString): TIFXKeyNode; virtual;
   public
     constructor Create;
     destructor Destroy; override;
@@ -78,7 +79,55 @@ type
 
     procedure ReadSections(Strings: TStrings); virtual;
     procedure ReadSectionValues(const Section: TIFXString; Strings: TStrings); virtual;
-    procedure ReadSection(const Section: TIFXString; Strings: TStrings); virtual;      
+    procedure ReadSection(const Section: TIFXString; Strings: TStrings); virtual;
+
+    procedure WriteBool(const Section, Key: TIFXString; Value: Boolean); overload; virtual;
+    procedure WriteBool(const Section, Key: TIFXString; Value: Boolean; Encoding: TIFXValueEncoding); overload; virtual; 
+
+    procedure WriteInt8(const Section, Key: TIFXString; Value: Int8); overload; virtual;
+    procedure WriteInt8(const Section, Key: TIFXString; Value: Int8; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteUInt8(const Section, Key: TIFXString; Value: UInt8); overload; virtual;
+    procedure WriteUInt8(const Section, Key: TIFXString; Value: UInt8; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteInt16(const Section, Key: TIFXString; Value: Int16); overload; virtual;
+    procedure WriteInt16(const Section, Key: TIFXString; Value: Int16; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteUInt16(const Section, Key: TIFXString; Value: UInt16); overload; virtual;
+    procedure WriteUInt16(const Section, Key: TIFXString; Value: UInt16; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteInt32(const Section, Key: TIFXString; Value: Int32); overload; virtual;
+    procedure WriteInt32(const Section, Key: TIFXString; Value: Int32; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteUInt32(const Section, Key: TIFXString; Value: UInt32); overload; virtual;
+    procedure WriteUInt32(const Section, Key: TIFXString; Value: UInt32; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteInt64(const Section, Key: TIFXString; Value: Int64); overload; virtual;
+    procedure WriteInt64(const Section, Key: TIFXString; Value: Int64; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteUInt64(const Section, Key: TIFXString; Value: UInt64); overload; virtual;
+    procedure WriteUInt64(const Section, Key: TIFXString; Value: UInt64; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteInteger(const Section, Key: TIFXString; Value: Integer); overload; virtual;
+    procedure WriteInteger(const Section, Key: TIFXString; Value: Integer; Encoding: TIFXValueEncoding); overload; virtual;
+
+    procedure WriteFloat32(const Section, Key: TIFXString; Value: Float32); overload; virtual;
+    procedure WriteFloat32(const Section, Key: TIFXString; Value: Float32; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteFloat64(const Section, Key: TIFXString; Value: Float64); overload; virtual;
+    procedure WriteFloat64(const Section, Key: TIFXString; Value: Float64; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteFloat(const Section, Key: TIFXString; Value: Double); overload; virtual;
+    procedure WriteFloat(const Section, Key: TIFXString; Value: Double; Encoding: TIFXValueEncoding); overload; virtual;
+
+    procedure WriteTime(const Section, Key: TIFXString; Value: TDateTime); overload; virtual;
+    procedure WriteTime(const Section, Key: TIFXString; Value: TDateTime; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteDate(const Section, Key: TIFXString; Value: TDateTime); overload; virtual;
+    procedure WriteDate(const Section, Key: TIFXString; Value: TDateTime; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteDateTime(const Section, Key: TIFXString; Value: TDateTime); overload; virtual;
+    procedure WriteDateTime(const Section, Key: TIFXString; Value: TDateTime; Encoding: TIFXValueEncoding); overload; virtual;
+
+    procedure WriteString(const Section, Key: TIFXString; const Value: String); overload; virtual;
+    procedure WriteString(const Section, Key: TIFXString; const Value: String; Encoding: TIFXValueEncoding); overload; virtual;
+
+    procedure WriteBinaryBuffer(const Section, Key: TIFXString; const Buffer; Size: TMemSize; MakeCopy: Boolean = False); overload; virtual;
+    procedure WriteBinaryBuffer(const Section, Key: TIFXString; const Buffer; Size: TMemSize; Encoding: TIFXValueEncoding; MakeCopy: Boolean = False); overload; virtual;
+    procedure WriteBinaryMemory(const Section, Key: TIFXString; Value: Pointer; Size: TMemSize; MakeCopy: Boolean = False); overload; virtual;
+    procedure WriteBinaryMemory(const Section, Key: TIFXString; Value: Pointer; Size: TMemSize; Encoding: TIFXValueEncoding; MakeCopy: Boolean = False); overload; virtual;
+    procedure WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream; Position, Count: Int64); overload; virtual;
+    procedure WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream; Position, Count: Int64; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream); overload; virtual;
+    procedure WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream; Encoding: TIFXValueEncoding); overload; virtual;
 
   {$IFDEF AllowLowLevelAccess}
     Function GetSectionNode(const Section: TIFXString): TIFXSectionNode; virtual;
@@ -103,7 +152,8 @@ type
 implementation
 
 uses
-  SysUtils;
+  SysUtils,
+  StrRect;
 
 {$IFDEF FPC_DisableWarns}
   {$DEFINE FPCDWM}
@@ -228,6 +278,18 @@ If Assigned(fOnKeyDestroy) then
   fOnKeyDestroy(Self,Section,Key);
 end;
 {$IFDEF FPCDWM}{$POP}{$ENDIF}
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.WritingValue(const Section, Key: TIFXString): TIFXKeyNode;
+var
+  SectionIndex: Integer;
+  KeyIndex:     Integer;
+begin
+SectionIndex := fFileNode.AddSection(Section);
+KeyIndex := fFileNode[SectionIndex].AddKey(Key);
+Result := fFileNode[SectionIndex][KeyIndex];
+end;
 
 //==============================================================================
 
@@ -798,6 +860,496 @@ If fFileNode.FindSection(Section,SectionNode) then
     Strings.Clear;
     For i := SectionNode.LowIndex to SectionNode.HighIndex do
       ; {$message 'implement line building'}
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBool(const Section, Key: TIFXString; Value: Boolean);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueBool(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteBool(const Section, Key: TIFXString; Value: Boolean; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueBool(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt8(const Section, Key: TIFXString; Value: Int8);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueInt8(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteInt8(const Section, Key: TIFXString; Value: Int8; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueInt8(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt8(const Section, Key: TIFXString; Value: UInt8);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueUInt8(Value);
+end;
+ 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteUInt8(const Section, Key: TIFXString; Value: UInt8; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueUInt8(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt16(const Section, Key: TIFXString; Value: Int16);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueInt16(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteInt16(const Section, Key: TIFXString; Value: Int16; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueInt16(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt16(const Section, Key: TIFXString; Value: UInt16);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueUInt16(Value);
+end;
+  
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteUInt16(const Section, Key: TIFXString; Value: UInt16; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueUInt16(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt32(const Section, Key: TIFXString; Value: Int32);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueInt32(Value);
+end;
+ 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteInt32(const Section, Key: TIFXString; Value: Int32; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueInt32(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt32(const Section, Key: TIFXString; Value: UInt32);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueUInt32(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteUInt32(const Section, Key: TIFXString; Value: UInt32; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueUInt32(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt64(const Section, Key: TIFXString; Value: Int64);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueInt64(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteInt64(const Section, Key: TIFXString; Value: Int64; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueInt64(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt64(const Section, Key: TIFXString; Value: UInt64);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueUInt64(Value);
+end;
+ 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteUInt64(const Section, Key: TIFXString; Value: UInt64; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueUInt64(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInteger(const Section, Key: TIFXString; Value: Integer);
+begin
+If not fSettings.ReadOnly then
+{$IF SizeOf(Integer) = 2}
+  WritingValue(Section,Key).SetValueInt16(Value);
+{$ELSEIF SizeOf(Integer) = 4}
+  WritingValue(Section,Key).SetValueInt32(Value);
+{$ELSEIF SizeOf(Integer) = 8}
+  WritingValue(Section,Key).SetValueInt64(Value);
+{$ELSE}
+  {$MESSAGE FATAL 'Unsupported integer size'}
+{$IFEND}
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteInteger(const Section, Key: TIFXString; Value: Integer; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+    {$IF SizeOf(Integer) = 2}
+      SetValueInt16(Value);
+    {$ELSEIF SizeOf(Integer) = 4}
+     SetValueInt32(Value);
+    {$ELSEIF SizeOf(Integer) = 8}
+      SetValueInt64(Value);
+    {$ELSE}
+      {$MESSAGE FATAL 'Unsupported integer size'}
+    {$IFEND}
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteFloat32(const Section, Key: TIFXString; Value: Float32);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueFloat32(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteFloat32(const Section, Key: TIFXString; Value: Float32; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueFloat32(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteFloat64(const Section, Key: TIFXString; Value: Float64);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueFloat64(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteFloat64(const Section, Key: TIFXString; Value: Float64; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueFloat64(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteFloat(const Section, Key: TIFXString; Value: Double);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueFloat64(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteFloat(const Section, Key: TIFXString; Value: Double; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueFloat64(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteTime(const Section, Key: TIFXString; Value: TDateTime);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueTime(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteTime(const Section, Key: TIFXString; Value: TDateTime; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueTime(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteDate(const Section, Key: TIFXString; Value: TDateTime);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueDate(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteDate(const Section, Key: TIFXString; Value: TDateTime; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueDate(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteDateTime(const Section, Key: TIFXString; Value: TDateTime);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueDateTime(Value);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteDateTime(const Section, Key: TIFXString; Value: TDateTime; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueDateTime(Value);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteString(const Section, Key: TIFXString; const Value: String);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueString(StrToUnicode(Value));
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteString(const Section, Key: TIFXString; const Value: String; Encoding: TIFXValueEncoding);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueString(StrToUnicode(Value));
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryBuffer(const Section, Key: TIFXString; const Buffer; Size: TMemSize; MakeCopy: Boolean = False);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueBinary(@Buffer,Size,MakeCopy);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteBinaryBuffer(const Section, Key: TIFXString; const Buffer; Size: TMemSize; Encoding: TIFXValueEncoding; MakeCopy: Boolean = False);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueBinary(@Buffer,Size,MakeCopy);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryMemory(const Section, Key: TIFXString; Value: Pointer; Size: TMemSize; MakeCopy: Boolean = False);
+begin
+If not fSettings.ReadOnly then
+  WritingValue(Section,Key).SetValueBinary(Value,Size,MakeCopy);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteBinaryMemory(const Section, Key: TIFXString; Value: Pointer; Size: TMemSize; Encoding: TIFXValueEncoding; MakeCopy: Boolean = False);
+begin
+If not fSettings.ReadOnly then
+  with WritingValue(Section,Key) do
+    begin
+      SetValueBinary(Value,Size,MakeCopy);
+      ValueEncoding := Encoding;
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream; Position, Count: Int64);
+var
+  TempMem:  Pointer;
+begin
+If not fSettings.ReadOnly then
+  begin
+    GetMem(TempMem,Count);
+    try
+      Stream.Seek(Position,soBeginning);
+      Stream.ReadBuffer(TempMem^,Count);
+      with WritingValue(Section,Key) do
+        begin
+          SetValueBinary(TempMem,TMemSize(Count),False);
+          ValueDataPtr^.BinaryValueOwned := True;
+        end;
+    except
+      FreeMem(TempMem,Stream.Size)
+    end;
+  end;
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream; Position, Count: Int64; Encoding: TIFXValueEncoding);
+var
+  TempMem:  Pointer;
+begin
+If not fSettings.ReadOnly then
+  begin
+    GetMem(TempMem,Count);
+    try
+      Stream.Seek(Position,soBeginning);
+      Stream.ReadBuffer(TempMem^,Count);
+      with WritingValue(Section,Key) do
+        begin
+          SetValueBinary(TempMem,TMemSize(Count),False);
+          ValueDataPtr^.BinaryValueOwned := True;
+          ValueEncoding := Encoding;
+        end;
+    except
+      FreeMem(TempMem,Stream.Size)
+    end;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream);
+var
+  TempMem:  Pointer;
+begin
+If not fSettings.ReadOnly then
+  begin
+    GetMem(TempMem,Stream.Size);
+    try
+      Stream.Seek(0,soBeginning);
+      Stream.ReadBuffer(TempMem^,Stream.Size);
+      with WritingValue(Section,Key) do
+        begin
+          SetValueBinary(TempMem,Stream.Size,False);
+          ValueDataPtr^.BinaryValueOwned := True;
+        end;
+    except
+      FreeMem(TempMem,Stream.Size)
+    end;
+  end;
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure TIniFileEx.WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream; Encoding: TIFXValueEncoding);
+var
+  TempMem:  Pointer;
+begin
+If not fSettings.ReadOnly then
+  begin
+    GetMem(TempMem,Stream.Size);
+    try
+      Stream.Seek(0,soBeginning);
+      Stream.ReadBuffer(TempMem^,Stream.Size);
+      with WritingValue(Section,Key) do
+        begin
+          SetValueBinary(TempMem,Stream.Size,False);
+          ValueDataPtr^.BinaryValueOwned := True;
+          ValueEncoding := Encoding;
+        end;
+    except
+      FreeMem(TempMem,Stream.Size)
+    end;
   end;
 end;
 

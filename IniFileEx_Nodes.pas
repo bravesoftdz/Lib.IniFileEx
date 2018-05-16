@@ -30,6 +30,7 @@ type
     procedure SetValueStr(const Value: TIFXString);
     procedure SetValueEncoding(Value: TIFXValueEncoding);
     procedure SetValueType(Value: TIFXValueType);
+    Function GetValueDataPtr: PIFXValueData;
   protected
     procedure FreeData; virtual;
     procedure SettingValue(ValueType: TIFXValueType); virtual;
@@ -115,6 +116,7 @@ type
     property ValueState: TIFXValueState read fValueState;
     property ValueType: TIFXValueType read fValueData.ValueType write SetValueType;
     property ValueData: TIFXValueData read fValueData;
+    property ValueDataPtr: PIFXValueData read GetValueDataPtr;
   end;
 
   TIFXSectionNode = class(TCustomListObject)
@@ -219,7 +221,7 @@ uses
   SysUtils,
   BinTextEnc, FloatHex,
 {$IF not Defined(FPC) and Defined(CanInline)}CRC32{inline expansion},{$IFEND}
-  IniFileEx_Conversion;
+  IniFileEx_Conversions;
 
 {$IFDEF FPC_DisableWarns}
   {$DEFINE FPCDWM}
@@ -270,6 +272,13 @@ If Value <> fValueData.ValueType then
     If fValueState = ivsReady then
       fValueState := ivsUndefined;
   end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIFXKeyNode.GetValueDataPtr: PIFXValueData;
+begin
+Result := Addr(fValueData);
 end;
 
 //==============================================================================

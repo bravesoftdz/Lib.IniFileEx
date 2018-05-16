@@ -64,6 +64,7 @@ type
                      BinaryValueOwned:  Boolean);
       ivtString:    ();
   end;
+  PIFXValueData = ^TIFXValueData;
 
   TIFXDuplicityBehavior = (idbDrop,idbReplace,idbRenameOld,idbRenameNew);
 
