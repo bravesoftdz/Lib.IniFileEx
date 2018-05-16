@@ -37,6 +37,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    // structure access
     Function IndexOfSection(const Section: TIFXString): Integer; virtual;
     Function IndexOfKey(const Section, Key: TIFXString): TIFXNodeIndices; overload; virtual;
     Function IndexOfKey(SectionIndex: Integer; const Key: TIFXString): Integer; overload; virtual;
@@ -60,7 +61,7 @@ type
     procedure SortKeys(const Section: TIFXString); overload; virtual;
     procedure SortKeys; overload; virtual;
     procedure Sort; virtual;
-
+    // comments
     Function GetFileComment: TIFXString; virtual;
     Function GetSectionComment(const Section: TIFXString): TIFXString; virtual;
     Function GetKeyComment(const Section, Key: TIFXString): TIFXString; virtual;
@@ -71,19 +72,17 @@ type
     procedure RemoveSectionComment(const Section: TIFXString; RemoveKeysComments: Boolean = False); virtual;
     procedure RemoveKeyComment(const Section, Key: TIFXString); virtual;
     procedure RemoveAllComment; virtual;
-
+    // mid-level properties access
     Function GetValueState(const Section, Key: TIFXString): TIFXValueState; virtual;
     Function GetValueEncoding(const Section, Key: TIFXString): TIFXValueEncoding; virtual;
     procedure SetValueEncoding(const Section, Key: TIFXString; Encoding: TIFXValueEncoding); virtual;
     Function GetValueType(const Section, Key: TIFXString): TIFXValueType; virtual;
-
     procedure ReadSections(Strings: TStrings); virtual;
     procedure ReadSectionValues(const Section: TIFXString; Strings: TStrings); virtual;
     procedure ReadSection(const Section: TIFXString; Strings: TStrings); virtual;
-
+    // values writing
     procedure WriteBool(const Section, Key: TIFXString; Value: Boolean); overload; virtual;
-    procedure WriteBool(const Section, Key: TIFXString; Value: Boolean; Encoding: TIFXValueEncoding); overload; virtual; 
-
+    procedure WriteBool(const Section, Key: TIFXString; Value: Boolean; Encoding: TIFXValueEncoding); overload; virtual;
     procedure WriteInt8(const Section, Key: TIFXString; Value: Int8); overload; virtual;
     procedure WriteInt8(const Section, Key: TIFXString; Value: Int8; Encoding: TIFXValueEncoding); overload; virtual;
     procedure WriteUInt8(const Section, Key: TIFXString; Value: UInt8); overload; virtual;
@@ -102,24 +101,20 @@ type
     procedure WriteUInt64(const Section, Key: TIFXString; Value: UInt64; Encoding: TIFXValueEncoding); overload; virtual;
     procedure WriteInteger(const Section, Key: TIFXString; Value: Integer); overload; virtual;
     procedure WriteInteger(const Section, Key: TIFXString; Value: Integer; Encoding: TIFXValueEncoding); overload; virtual;
-
     procedure WriteFloat32(const Section, Key: TIFXString; Value: Float32); overload; virtual;
     procedure WriteFloat32(const Section, Key: TIFXString; Value: Float32; Encoding: TIFXValueEncoding); overload; virtual;
     procedure WriteFloat64(const Section, Key: TIFXString; Value: Float64); overload; virtual;
     procedure WriteFloat64(const Section, Key: TIFXString; Value: Float64; Encoding: TIFXValueEncoding); overload; virtual;
     procedure WriteFloat(const Section, Key: TIFXString; Value: Double); overload; virtual;
     procedure WriteFloat(const Section, Key: TIFXString; Value: Double; Encoding: TIFXValueEncoding); overload; virtual;
-
     procedure WriteTime(const Section, Key: TIFXString; Value: TDateTime); overload; virtual;
     procedure WriteTime(const Section, Key: TIFXString; Value: TDateTime; Encoding: TIFXValueEncoding); overload; virtual;
     procedure WriteDate(const Section, Key: TIFXString; Value: TDateTime); overload; virtual;
     procedure WriteDate(const Section, Key: TIFXString; Value: TDateTime; Encoding: TIFXValueEncoding); overload; virtual;
     procedure WriteDateTime(const Section, Key: TIFXString; Value: TDateTime); overload; virtual;
     procedure WriteDateTime(const Section, Key: TIFXString; Value: TDateTime; Encoding: TIFXValueEncoding); overload; virtual;
-
     procedure WriteString(const Section, Key: TIFXString; const Value: String); overload; virtual;
     procedure WriteString(const Section, Key: TIFXString; const Value: String; Encoding: TIFXValueEncoding); overload; virtual;
-
     procedure WriteBinaryBuffer(const Section, Key: TIFXString; const Buffer; Size: TMemSize; MakeCopy: Boolean = False); overload; virtual;
     procedure WriteBinaryBuffer(const Section, Key: TIFXString; const Buffer; Size: TMemSize; Encoding: TIFXValueEncoding; MakeCopy: Boolean = False); overload; virtual;
     procedure WriteBinaryMemory(const Section, Key: TIFXString; Value: Pointer; Size: TMemSize; MakeCopy: Boolean = False); overload; virtual;
@@ -128,8 +123,32 @@ type
     procedure WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream; Position, Count: Int64; Encoding: TIFXValueEncoding); overload; virtual;
     procedure WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream); overload; virtual;
     procedure WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream; Encoding: TIFXValueEncoding); overload; virtual;
-
+    // values reading
+    procedure PrepareReading(const Section, Key: TIFXString; ValueType: TIFXValueType); virtual;
+    Function ReadBool(const Section, Key: TIFXString; Default: Boolean = False): Boolean; virtual;
+    Function ReadInt8(const Section, Key: TIFXString; Default: Int8 = 0): Int8; virtual;
+    Function ReadUInt8(const Section, Key: TIFXString; Default: UInt8 = 0): UInt8; virtual;
+    Function ReadInt16(const Section, Key: TIFXString; Default: Int16 = 0): Int16; virtual;
+    Function ReadUInt16(const Section, Key: TIFXString; Default: UInt16 = 0): UInt16; virtual;
+    Function ReadInt32(const Section, Key: TIFXString; Default: Int32 = 0): Int32; virtual;
+    Function ReadUInt32(const Section, Key: TIFXString; Default: UInt32 = 0): UInt32; virtual;
+    Function ReadInt64(const Section, Key: TIFXString; Default: Int64 = 0): Int64; virtual;
+    Function ReadUInt64(const Section, Key: TIFXString; Default: UInt64 = 0): UInt64; virtual;
+    Function ReadInteger(const Section, Key: TIFXString; Default: Integer = 0): Integer; virtual;
+    Function ReadFloat32(const Section, Key: TIFXString; Default: Float32 = 0.0): Float32; virtual;
+    Function ReadFloat64(const Section, Key: TIFXString; Default: Float64 = 0.0): Float64; virtual;
+    Function ReadFloat(const Section, Key: TIFXString; Default: Double = 0.0): Double; virtual;
+    Function ReadTime(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime; virtual;
+    Function ReadDate(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime; virtual;
+    Function ReadDateTime(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime; virtual;
+    Function ReadString(const Section, Key: TIFXString; Default: String = ''): String; virtual;
+    Function ReadBinarySize(const Section, Key: TIFXString): TMemSize; virtual;
+    Function ReadBinaryBuffer(const Section, Key: TIFXString; var Buffer; Size: TMemSize): TMemSize; virtual;
+    Function ReadBinaryMemory(const Section, Key: TIFXString; out Ptr: Pointer; MakeCopy: Boolean = False): TMemSize; overload; virtual;
+    Function ReadBinaryMemory(const Section, Key: TIFXString; Ptr: Pointer; Size: TMemSize): TMemSize; overload; virtual;
+    Function ReadBinaryStream(const Section, Key: TIFXString; Stream: TStream; ClearStream: Boolean = False): Int64; virtual;
   {$IFDEF AllowLowLevelAccess}
+    // low level stuff
     Function GetSectionNode(const Section: TIFXString): TIFXSectionNode; virtual;
     Function GetKeyNode(const Section, Key: TIFXString): TIFXKeyNode; virtual;
     Function GetValueString(const Section, Key: TIFXString): TIFXString; virtual;
@@ -1351,6 +1370,302 @@ If not fSettings.ReadOnly then
       FreeMem(TempMem,Stream.Size)
     end;
   end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.PrepareReading(const Section, Key: TIFXString; ValueType: TIFXValueType);
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValuePrepare(ValueType)
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBool(const Section, Key: TIFXString; Default: Boolean = False): Boolean;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueBool(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInt8(const Section, Key: TIFXString; Default: Int8 = 0): Int8;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueInt8(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadUInt8(const Section, Key: TIFXString; Default: UInt8 = 0): UInt8;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueUInt8(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInt16(const Section, Key: TIFXString; Default: Int16 = 0): Int16;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueInt16(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadUInt16(const Section, Key: TIFXString; Default: UInt16 = 0): UInt16;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueUInt16(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInt32(const Section, Key: TIFXString; Default: Int32 = 0): Int32;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueInt32(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadUInt32(const Section, Key: TIFXString; Default: UInt32 = 0): UInt32;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueUInt32(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInt64(const Section, Key: TIFXString; Default: Int64 = 0): Int64;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueInt64(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadUInt64(const Section, Key: TIFXString; Default: UInt64 = 0): UInt64;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueUInt64(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInteger(const Section, Key: TIFXString; Default: Integer = 0): Integer;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+{$IF SizeOf(Integer) = 2}
+  KeyNode.GetValueInt16(Result)
+{$ELSEIF SizeOf(Integer) = 4}
+  KeyNode.GetValueInt32(Result)
+{$ELSEIF SizeOf(Integer) = 8}
+  KeyNode.GetValueInt64(Result)
+{$ELSE}
+  {$MESSAGE FATAL 'Unsupported integer size'}
+{$IFEND}
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadFloat32(const Section, Key: TIFXString; Default: Float32 = 0.0): Float32;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueFloat32(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadFloat64(const Section, Key: TIFXString; Default: Float64 = 0.0): Float64;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueFloat64(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadFloat(const Section, Key: TIFXString; Default: Double = 0.0): Double;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueFloat64(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadTime(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueDate(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadDate(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueTime(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadDateTime(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueDateTime(Result)
+else
+  Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadString(const Section, Key: TIFXString; Default: String = ''): String;
+var
+  KeyNode:  TIFXKeyNode;
+  OutTemp:  TIFXString;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  begin
+    KeyNode.GetValueString(OutTemp);
+    Result := IFXStrToStr(OutTemp);
+  end
+else Result := Default;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinarySize(const Section, Key: TIFXString): TMemSize;
+var
+  KeyNode:  TIFXKeyNode;
+  Dummy:    Pointer;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  KeyNode.GetValueBinary(Dummy,Result,False)
+else
+  Result := 0;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinaryBuffer(const Section, Key: TIFXString; var Buffer; Size: TMemSize): TMemSize;
+var
+  KeyNode:    TIFXKeyNode;
+  ValuePtr:   Pointer;
+  ValueSize:  TMemSize;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  begin
+    KeyNode.GetValueBinary(ValuePtr,ValueSize,False);
+    If Size < ValueSize then Result := Size
+      else Result := ValueSize;
+    Move(ValuePtr^,Buffer,Result); 
+  end
+else Result := 0;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinaryMemory(const Section, Key: TIFXString; out Ptr: Pointer; MakeCopy: Boolean = False): TMemSize;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If not fFileNode.FindKey(Section,Key,KeyNode) then
+  begin
+    Ptr := nil;  
+    Result := 0;
+  end
+else KeyNode.GetValueBinary(Ptr,Result,MakeCopy);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinaryMemory(const Section, Key: TIFXString; Ptr: Pointer; Size: TMemSize): TMemSize;
+begin
+Result := ReadBinaryBuffer(Section,Key,Ptr^,Size);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinaryStream(const Section, Key: TIFXString; Stream: TStream; ClearStream: Boolean = False): Int64;
+var
+  KeyNode:    TIFXKeyNode;
+  ValuePtr:   Pointer;
+  ValueSize:  TMemSize;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  begin
+    If ClearStream then
+      Stream.Size := 0;
+    KeyNode.GetValueBinary(ValuePtr,ValueSize,False);
+    Stream.WriteBuffer(ValuePtr^,ValueSize);
+    Result := Int64(ValueSize);
+  end
+else Result := 0;
 end;
 
 {$IFDEF AllowLowLevelAccess}
