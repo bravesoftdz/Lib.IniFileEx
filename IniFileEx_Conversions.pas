@@ -15,8 +15,8 @@ Function IFXTryStrToUInt64(const Str: TIFXString; out Value: UInt64): Boolean;
 Function IFXBoolToStr(Value: Boolean; AsString: Boolean): TIFXString;
 Function IFXTryStrToBool(const Str: TIFXString; out Value: Boolean): Boolean;
 
-Function IFXEncodeString(const Str: TIFXString): TIFXString;
-Function IFXDecodeString(const Str: TIFXString): TIFXString;
+Function IFXEncodeString(const Str: TIFXString; FormatSettings: TIFXIniFormat): TIFXString;
+Function IFXDecodeString(const Str: TIFXString; FormatSettings: TIFXIniFormat): TIFXString;
 
 implementation
 
@@ -182,7 +182,7 @@ end;
  
 //------------------------------------------------------------------------------
 
-Function IFXEncodeString(const Str: TIFXString): TIFXString;
+Function IFXEncodeString(const Str: TIFXString; FormatSettings: TIFXIniFormat): TIFXString;
 var
   i:        TStrSize;
   Temp:     TStrSize;
@@ -191,7 +191,7 @@ var
 begin
 // scan string
 Temp := 0; 
-Quoted := False;
+Quoted := FormatSettings.ForceQuote;
 For i := 1 to Length(Str) do
   case Str[i] of
     #32:        // space
@@ -204,21 +204,24 @@ For i := 1 to Length(Str) do
         Inc(Temp,6);
         Quoted := True;
       end;
-    #0,#7..#13,
-    IFX_ENC_STR_ESCAPECHAR,
-    IFX_ENC_STR_QUOTECHAR:
-      begin     // replaced by \C or doubled
+    #0,#7..#13:
+      begin     // replaced by \C
         Inc(Temp,2);
         Quoted := True;
      end;
   else
-    Inc(Temp);
+    If Ord(Str[i]) in [Ord(FormatSettings.EscapeChar),Ord(FormatSettings.QuoteChar)] then
+      begin
+        Inc(Temp,2);
+        Quoted := True;
+      end
+    else Inc(Temp);
   end;
 If Quoted then
   begin
     SetLength(Result,Temp + 2);
-    Result[1] := IFX_ENC_STR_QUOTECHAR;
-    Result[Length(result)] := IFX_ENC_STR_QUOTECHAR;
+    Result[1] := FormatSettings.QuoteChar;
+    Result[Length(result)] := FormatSettings.QuoteChar;
   end
 else SetLength(Result,Temp);
 // encode string
@@ -230,8 +233,8 @@ For i := 1 to Length(Str) do
   case Str[i] of
     #1..#6,#14..#31:
       begin
-        Result[Temp] := IFX_ENC_STR_ESCAPECHAR;
-        Result[Temp + 1] := IFX_ENC_STR_CHARNUM;
+        Result[Temp] := FormatSettings.EscapeChar;
+        Result[Temp + 1] := FormatSettings.NumericChar;
         StrTemp := StrToIFXStr(IntToHex(Ord(Str[i]),4));
         Result[Temp + 2] := StrTemp[1];
         Result[Temp + 3] := StrTemp[2];
@@ -241,7 +244,7 @@ For i := 1 to Length(Str) do
       end;
     #0,#7..#13:
       begin
-        Result[Temp] := IFX_ENC_STR_ESCAPECHAR;
+        Result[Temp] := FormatSettings.EscapeChar;
         case Str[i] of
           #0:   Result[Temp + 1] := '0';  // null
           #7:   Result[Temp + 1] := 'a';
@@ -254,22 +257,24 @@ For i := 1 to Length(Str) do
         end;
         Inc(Temp,2);
       end;
-    IFX_ENC_STR_ESCAPECHAR,
-    IFX_ENC_STR_QUOTECHAR:
+  else
+    If Ord(Str[i]) in [Ord(FormatSettings.EscapeChar),Ord(FormatSettings.QuoteChar)] then
       begin
-        Result[Temp] := IFX_ENC_STR_ESCAPECHAR;
+        Result[Temp] := FormatSettings.EscapeChar;
         Result[Temp + 1] := Str[i];
         Inc(Temp,2);
+      end
+    else
+      begin
+        Result[Temp] := Str[i];
+        Inc(Temp);
       end;
-  else
-    Result[Temp] := Str[i];
-    Inc(Temp);
   end;
 end;
  
 //------------------------------------------------------------------------------
 
-Function IFXDecodeString(const Str: TIFXString): TIFXString;
+Function IFXDecodeString(const Str: TIFXString; FormatSettings: TIFXIniFormat): TIFXString;
 var
   Quoted:   Boolean;
   i,ResPos: TStrSize;
@@ -286,47 +291,50 @@ begin
 If Length(Str) > 0 then
   begin
     SetLength(Result,Length(Str));
-    Quoted := Str[1] = IFX_ENC_STR_QUOTECHAR;
+    Quoted := Str[1] = FormatSettings.QuoteChar;
     If Quoted then i := 2
       else i := 1;
     ResPos := 1;
     while i <= Length(Str) do
-      case Str[i] of
-        IFX_ENC_STR_ESCAPECHAR:
-          If i < Length(Str) then
-            case Str[i + 1] of
-              IFX_ENC_STR_ESCAPECHAR,
-              IFX_ENC_STR_QUOTECHAR:
-                SetAndAdvance(Str[i + 1],2,1);
-              IFX_ENC_STR_CHARNUM:
-                If (i + 4) < Length(Str) then
+      begin
+        If Str[i] = FormatSettings.EscapeChar then
+          begin
+            If i < Length(Str) then
+              case Str[i + 1] of
+                '0':  SetAndAdvance(#0,2,1);
+                'a':  SetAndAdvance(#7,2,1);
+                'b':  SetAndAdvance(#8,2,1);
+                't':  SetAndAdvance(#9,2,1);
+                'n':  SetAndAdvance(#10,2,1);
+                'v':  SetAndAdvance(#11,2,1);
+                'f':  SetAndAdvance(#12,2,1);
+                'r':  SetAndAdvance(#13,2,1);
+              else
+                If Str[i + 1] = FormatSettings.NumericChar then
                   begin
-                    If TryStrToInt(IFXStrToStr(IFX_ENC_STR_HEXADECIMAL + Copy(Str,i + 2,4)),Temp) then
-                      SetAndAdvance(TIFXChar(Temp),6,1)
-                    else
-                      Break{while...};
+                    If (i + 4) < Length(Str) then
+                      begin
+                        If TryStrToInt(IFXStrToStr('$' + Copy(Str,i + 2,4)),Temp) then
+                          SetAndAdvance(TIFXChar(Temp),6,1)
+                        else
+                          Break{while...};
+                      end
+                    else Break{while...};
                   end
-                else Break{while...};
-              '0':  SetAndAdvance(#0,2,1);
-              'a':  SetAndAdvance(#7,2,1);
-              'b':  SetAndAdvance(#8,2,1);
-              't':  SetAndAdvance(#9,2,1);
-              'n':  SetAndAdvance(#10,2,1);
-              'v':  SetAndAdvance(#11,2,1);
-              'f':  SetAndAdvance(#12,2,1);
-              'r':  SetAndAdvance(#13,2,1);
-            else
-              Break{while...};
-            end
-          else Break{while...};
-        IFX_ENC_STR_QUOTECHAR:
+                else If Ord(Str[i + 1]) in [Ord(FormatSettings.EscapeChar),Ord(FormatSettings.QuoteChar)] then
+                  SetAndAdvance(Str[i + 1],2,1)
+                else
+                  Break{while...};
+              end
+            else Break{while...};
+          end
+        else If Str[i] = FormatSettings.QuoteChar then
           begin
             If Quoted then
               Break{while...};
             SetAndAdvance(Str[i],1,1);
-          end;
-      else
-        SetAndAdvance(Str[i],1,1);
+          end
+        else SetAndAdvance(Str[i],1,1);
       end;
     SetLength(Result,ResPos - 1);
   end

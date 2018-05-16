@@ -68,11 +68,30 @@ type
 
   TIFXDuplicityBehavior = (idbDrop,idbReplace,idbRenameOld,idbRenameNew);
 
+  TIFXIniFormat = record
+    EscapeChar:       TIFXChar;
+    QuoteChar:        TIFXChar;
+    NumericChar:      TIFXChar;
+    ForceQuote:       Boolean;
+    CommentChar:      TIFXChar;
+    SectionStartChar: TIFXChar;
+    SectionEndChar:   TIFXChar;
+    ValueDelimChar:   TIFXChar;
+    WhiteSpaceChar:   TIFXChar;
+    KeyWhiteSpace:    Boolean;
+    ValueWhiteSpace:  Boolean;
+    MaxValueLineLen:  Integer;
+    LineBreak:        TIFXString;
+  end;
+
   TIFXSettings = record
-    FormatSettings:     TFormatSettings;
-    FullNameEval:       Boolean;
-    ReadOnly:           Boolean;
-    DuplicityBehavior:  TIFXDuplicityBehavior;
+    FormatSettings:         TFormatSettings;
+    IniFormat:              TIFXIniFormat;
+    FullNameEval:           Boolean;
+    ReadOnly:               Boolean;
+    DuplicityBehavior:      TIFXDuplicityBehavior;
+    DuplicityRenameOldStr:  TIFXString;
+    DuplicityRenameNewStr:  TIFXString;
   end;
   PIFXSettings = ^TIFXSettings;
 
@@ -88,14 +107,6 @@ Function IFXNodeIndicesValid(Indices: TIFXNodeIndices): Boolean;
 
 const
   IFX_INVALID_NODE_INDICES: TIFXNodeIndices = (SectionIndex: -1; KeyIndex: -1);
-
-  IFX_ENC_STR_HEXADECIMAL = TIFXChar('$');
-  IFX_ENC_STR_ESCAPECHAR  = TIFXChar('\');
-  IFX_ENC_STR_QUOTECHAR   = TIFXChar('"');
-  IFX_ENC_STR_CHARNUM     = TIFXChar('#');
-
-  IFX_DUPRENSTR_NEW = TIFXString('_new');
-  IFX_DUPRENSTR_OLD = TIFXString('_old');
 
 implementation
 
@@ -231,10 +242,26 @@ For i := Low(def_ShortDayNames) to High(def_ShortDayNames) do
   Sett.FormatSettings.ShortDayNames[i] := def_ShortDayNames[i];
 For i := Low(def_LongDayNames) to High(def_LongDayNames) do
   Sett.FormatSettings.LongDayNames[i] := def_LongDayNames[i];
-// other fields beyond formatting  
+// ini file formatting options
+Sett.IniFormat.EscapeChar := '\';
+Sett.IniFormat.QuoteChar := '"';
+Sett.IniFormat.NumericChar := '#';
+Sett.IniFormat.ForceQuote := False;
+Sett.IniFormat.CommentChar := ';';
+Sett.IniFormat.SectionStartChar := '[';
+Sett.IniFormat.SectionEndChar := ']';
+Sett.IniFormat.ValueDelimChar := '=';
+Sett.IniFormat.WhiteSpaceChar := ' ';
+Sett.IniFormat.KeyWhiteSpace := True;
+Sett.IniFormat.ValueWhiteSpace := True;
+Sett.IniFormat.MaxValueLineLen := -1;
+Sett.IniFormat.LineBreak := StrToIFXStr(sLineBreak);
+// other fields
 Sett.FullNameEval := True;
 Sett.ReadOnly := False;
 Sett.DuplicityBehavior := idbDrop;
+Sett.DuplicityRenameOldStr := '_old';
+Sett.DuplicityRenameNewStr := '_new';
 end;
 
 //------------------------------------------------------------------------------

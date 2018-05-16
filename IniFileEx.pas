@@ -37,6 +37,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    // file/stream manipulation
     // structure access
     Function IndexOfSection(const Section: TIFXString): Integer; virtual;
     Function IndexOfKey(const Section, Key: TIFXString): TIFXNodeIndices; overload; virtual;
@@ -520,28 +521,28 @@ If not fSettings.ReadOnly and (IFXCompareText(SourceSection,DestinationSection) 
             end;
           idbRenameOld:
             begin
-              If fFileNode.IndexOfSection(DestinationSection + IFX_DUPRENSTR_OLD) >= 0 then
+              If fFileNode.IndexOfSection(DestinationSection + fSettings.DuplicityRenameOldStr) >= 0 then
                 begin
                   Counter := 0;
                   // this can go to infinite loop, but only theoretically, look elsewhere
                   while fFileNode.IndexOfSection(DestinationSection +
-                    IFX_DUPRENSTR_OLD + StrToIFXStr(IntToStr(Counter))) >= 0 do
+                    fSettings.DuplicityRenameOldStr + StrToIFXStr(IntToStr(Counter))) >= 0 do
                     Inc(Counter);
-                  fFileNode[Index].NameStr := DestinationSection + IFX_DUPRENSTR_OLD + StrToIFXStr(IntToStr(Counter));
+                  fFileNode[Index].NameStr := DestinationSection + fSettings.DuplicityRenameOldStr + StrToIFXStr(IntToStr(Counter));
                 end
-              else fFileNode[Index].NameStr := DestinationSection + IFX_DUPRENSTR_OLD;
+              else fFileNode[Index].NameStr := DestinationSection + fSettings.DuplicityRenameOldStr;
               AddNewSection(DestinationSection);
             end;
           idbRenameNew:
-            If fFileNode.IndexOfSection(DestinationSection + IFX_DUPRENSTR_NEW) >= 0 then
+            If fFileNode.IndexOfSection(DestinationSection + fSettings.DuplicityRenameNewStr) >= 0 then
               begin
                 Counter := 0;
                 while fFileNode.IndexOfSection(DestinationSection +
-                  IFX_DUPRENSTR_NEW + StrToIFXStr(IntToStr(Counter))) >= 0 do
+                  fSettings.DuplicityRenameNewStr + StrToIFXStr(IntToStr(Counter))) >= 0 do
                   Inc(Counter);
-                AddNewSection(DestinationSection + IFX_DUPRENSTR_NEW + StrToIFXStr(IntToStr(Counter)));
+                AddNewSection(DestinationSection + fSettings.DuplicityRenameNewStr + StrToIFXStr(IntToStr(Counter)));
               end
-            else AddNewSection(DestinationSection + IFX_DUPRENSTR_NEW);
+            else AddNewSection(DestinationSection + fSettings.DuplicityRenameNewStr);
         else
           {idbDrop}
         end
@@ -592,27 +593,27 @@ If not fSettings.ReadOnly and ((IFXCompareText(SourceSection,DestinationSection)
                   end;
                 idbRenameOld:
                   begin
-                    If fFileNode[DstSectionIndex].IndexOfKey(DestinationKey + IFX_DUPRENSTR_OLD) >= 0 then
+                    If fFileNode[DstSectionIndex].IndexOfKey(DestinationKey + fSettings.DuplicityRenameOldStr) >= 0 then
                       begin
                         Counter := 0;
                         while fFileNode[DstSectionIndex].IndexOfKey(DestinationKey +
-                          IFX_DUPRENSTR_OLD + StrToIFXStr(IntToStr(Counter))) >= 0 do
+                          fSettings.DuplicityRenameOldStr + StrToIFXStr(IntToStr(Counter))) >= 0 do
                           Inc(Counter);
-                        fFileNode[DstSectionIndex][Index].NameStr := DestinationKey + IFX_DUPRENSTR_OLD + StrToIFXStr(IntToStr(Counter));
+                        fFileNode[DstSectionIndex][Index].NameStr := DestinationKey + fSettings.DuplicityRenameOldStr + StrToIFXStr(IntToStr(Counter));
                       end
-                    else fFileNode[DstSectionIndex][Index].NameStr := DestinationKey + IFX_DUPRENSTR_OLD;
+                    else fFileNode[DstSectionIndex][Index].NameStr := DestinationKey + fSettings.DuplicityRenameOldStr;
                     AddNewKey(DestinationKey);
                   end;
                 idbRenameNew:
-                  If fFileNode[DstSectionIndex].IndexOfKey(DestinationKey + IFX_DUPRENSTR_NEW) >= 0 then
+                  If fFileNode[DstSectionIndex].IndexOfKey(DestinationKey + fSettings.DuplicityRenameNewStr) >= 0 then
                     begin
                       Counter := 0;
                       while fFileNode[DstSectionIndex].IndexOfKey(DestinationKey +
-                        IFX_DUPRENSTR_NEW + StrToIFXStr(IntToStr(Counter))) >= 0 do
+                        fSettings.DuplicityRenameNewStr + StrToIFXStr(IntToStr(Counter))) >= 0 do
                         Inc(Counter);
-                      AddNewKey(DestinationKey + IFX_DUPRENSTR_NEW + StrToIFXStr(IntToStr(Counter)));
+                      AddNewKey(DestinationKey + fSettings.DuplicityRenameNewStr + StrToIFXStr(IntToStr(Counter)));
                     end
-                  else AddNewKey(DestinationKey + IFX_DUPRENSTR_NEW);
+                  else AddNewKey(DestinationKey + fSettings.DuplicityRenameNewStr);
               else
                 {idbDrop}
               end
