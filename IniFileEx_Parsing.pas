@@ -202,8 +202,8 @@ begin
 Result := Stream_WriteUInt32(fStream,IFX_BINI_SIGNATURE_KEY);
 Inc(Result,Binary_0000_WriteString(KeyNode.NameStr));
 Inc(Result,Binary_0000_WriteString(KeyNode.Comment));
-Inc(Result,Stream_WriteUInt8(fStream,UInt8(Ord(KeyNode.ValueEncoding))));
-Inc(Result,Stream_WriteUInt8(fStream,UInt8(Ord(KeyNode.ValueType))));
+Inc(Result,Stream_WriteUInt8(fStream,UInt8(IFXValueEncodingToByte(KeyNode.ValueEncoding))));
+Inc(Result,Stream_WriteUInt8(fStream,UInt8(IFXValueTypeToByte(KeyNode.ValueType))));
 case KeyNode.ValueType of
   ivtBool:      Inc(Result,Stream_WriteBoolean(fStream,KeyNode.ValueData.BoolValue));
   ivtInt8:      Inc(Result,Stream_WriteInt8(fStream,KeyNode.ValueData.Int8Value));
@@ -313,8 +313,8 @@ try
         begin
           Result.NameStr := Binary_0000_ReadString;
           Result.Comment := Binary_0000_ReadString;
-          Result.ValueEncoding := TIFXValueEncoding(Stream_ReadUInt8(fStream)); // do proper conversion
-          Result.ValueType := TIFXValueType(Stream_ReadUInt8(fStream));
+          Result.ValueEncoding := IFXByteToValueEncoding(Stream_ReadUInt8(fStream)); 
+          Result.ValueType := IFXByteToValueType(Stream_ReadUInt8(fStream));
           // read value data
           with Result.ValueDataPtr^ do
             case Result.ValueType of
