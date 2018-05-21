@@ -24,9 +24,11 @@ type
     fFileNode:      TIFXFileNode;
     fStream:        TStream;
     // processing fields
+    // textual
     fEmptyLinePos:  Int64;
     fIniString:     UTF8String;
     fIniStringPos:  TStrSize;
+    // binary
     fBinFileHeader: TIFXBiniFileHeader;
   protected
     // writing textual ini
@@ -41,9 +43,10 @@ type
     Function Binary_0000_WriteSection(SectionNode: TIFXSectionNode): TMemSize; virtual;
     Function Binary_0000_WriteKey(KeyNode: TIFXKeyNode): TMemSize; virtual;
     // reading binary ini of structure 0x0000
-    Function Binary_0000_ReadString: TIFXString; virtual; abstract;
-    Function Binary_0000_ReadSection: TIFXSectionNode; virtual; abstract;
-    Function Binary_0000_ReadKey: TIFXKeyNode; virtual; abstract;
+    Function Binary_0000_ReadString: TIFXString; virtual;
+    procedure Binary_0000_ReadData; virtual;
+    Function Binary_0000_ReadSection: TIFXSectionNode; virtual;
+    Function Binary_0000_ReadKey: TIFXKeyNode; virtual;
   public
     constructor Create(SettingsPtr: PIFXSettings; FileNode: TIFXFileNode);
     // auxiliary methods
@@ -54,7 +57,7 @@ type
     procedure WriteTextual(Stream: TStream); virtual;
     procedure ReadTextual(Stream: TStream); virtual;
     procedure WriteBinary(Stream: TStream); virtual;
-    //procedure ReadBinary(Stream: TStream); virtual;
+    procedure ReadBinary(Stream: TStream); virtual;
   end;
 
 implementation
@@ -70,9 +73,12 @@ const
   IFX_BINI_SIGNATURE_SECTION = UInt32($54434553); // SECT
   IFX_BINI_SIGNATURE_KEY     = UInt32($5659454B); // KEYV
 
-  IFX_BINI_MINFILESIZE = 12;
+  IFX_BINI_MINFILESIZE = SizeOf(TIFXBiniFileHeader);
 
-  IFX_BINI_STRUCT_0 = UInt16(0);
+  IFX_BINI_STRUCT_0 = UInt16(0);  // more may be added in the future
+
+  IFX_BINI_FLAGS_ZLIB_COMPRESS = UInt16($0001); // not yet implemented
+  IFX_BINI_FLAGS_AES_ENCRYPT   = UInt16($0002); // not yet implemented
   
 {
   Binary INI format:
@@ -116,7 +122,7 @@ begin
 If fStream.Position <> fEmptyLinePos then
   begin
     TempStr := IFXStrToUTF8(fSettingsPtr.IniFormat.LineBreak);
-    Result := TMemSize(fStream.Write(PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)));
+    Result := TMemSize(Stream_WriteBuffer(fStream,PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)));
     fEmptyLinePos := fStream.Position;
   end
 else Result := 0;
@@ -132,7 +138,7 @@ If Length(Str) > 0 then
   begin
     TempStr := IFXStrToUTF8(Str + fSettingsPtr.IniFormat.LineBreak);
     If Length(TempStr) > 0 then
-      Result := TMemSize(fStream.Write(PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)))
+      Result := TMemSize(Stream_WriteBuffer(fStream,PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)))
     else
       Result := 0;
   end
@@ -170,7 +176,7 @@ If Length(Str) > 0 then
   begin
     TempStr := IFXStrToUTF8(Str);
     Result := Stream_WriteUInt32(fStream,Length(TempStr));
-    Inc(Result,fStream.Write(PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)));
+    Inc(Result,Stream_WriteBuffer(fStream,PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)));
   end
 else Result := Stream_WriteUInt32(fStream,0);
 end;
@@ -213,10 +219,144 @@ case KeyNode.ValueType of
   ivtDate:      Inc(Result,Stream_WriteBuffer(fStream,KeyNode.ValueData.DateValue,SizeOf(TDateTime)));
   ivtTime:      Inc(Result,Stream_WriteBuffer(fStream,KeyNode.ValueData.TimeValue,SizeOf(TDateTime)));
   ivtDateTime:  Inc(Result,Stream_WriteBuffer(fStream,KeyNode.ValueData.DateTimeValue,SizeOf(TDateTime)));
-  ivtBinary:    Inc(Result,Stream_WriteBuffer(fStream,KeyNode.ValueData.BinaryValuePtr^,KeyNode.ValueData.BinaryValueSize));
+  ivtBinary:    begin
+                  Inc(Result,Stream_WriteUInt64(fStream,UInt64(KeyNode.ValueData.BinaryValueSize)));
+                  Inc(Result,Stream_WriteBuffer(fStream,KeyNode.ValueData.BinaryValuePtr^,KeyNode.ValueData.BinaryValueSize));
+                end;
 else
   {ivtString}
   Inc(Result,Binary_0000_WriteString(KeyNode.ValueData.StringValue));
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIFXParser.Binary_0000_ReadString: TIFXString;
+var
+  StrLen:   UInt32;
+  TempStr:  UTF8String;
+begin
+If Stream_ReadUInt32(fStream,StrLen) = SizeOf(UInt32) then
+  begin
+    SetLength(TempStr,StrLen);
+    If Stream_ReadBuffer(fStream,PUTF8Char(TempStr)^,StrLen * SizeOf(UTF8Char)) = (StrLen * SizeOf(UTF8Char)) then
+      Result := UTF8ToIFXStr(TempStr)
+    else
+      raise Exception.Create('TIFXParser.Binary_0000_ReadString: Error reading string.');
+  end
+else raise Exception.Create('TIFXParser.Binary_0000_ReadString: Error reading string length.');
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIFXParser.Binary_0000_ReadData;
+var
+  i:  Integer;
+begin
+fFileNode.Comment := Binary_0000_ReadString;
+If (fStream.Size - fStream.Position) >= SizeOf(UInt32) then
+  begin
+    For i := 0 to Pred(Integer(Stream_ReadUInt32(fStream))) do
+      fFileNode.AddSectionNode(Binary_0000_ReadSection);
+  end
+else raise Exception.Create('TIFXParser.Binary_0000_ReadData: Not enough data for section count.');
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIFXParser.Binary_0000_ReadSection: TIFXSectionNode;
+var
+  i:  Integer;
+begin
+Result := TIFXSectionNode.Create(fFileNode.SettingsPtr);
+try
+  If (fStream.Size - fStream.Position) >= (SizeOf(UInt32) * 4) then
+    begin
+      If Stream_ReadUInt32(fStream) = IFX_BINI_SIGNATURE_SECTION then
+        begin
+          Result.NameStr := Binary_0000_ReadString;
+          Result.Comment := Binary_0000_ReadString;
+          If (fStream.Size - fStream.Position) >= SizeOf(UInt32) then
+            begin
+              For i := 0 to Pred(Integer(Stream_ReadUInt32(fStream))) do
+                Result.AddKeyNode(Binary_0000_ReadKey);
+            end
+          else raise Exception.Create('TIFXParser.Binary_0000_ReadSection: Not enough data for key count.');
+        end
+      else raise Exception.Create('TIFXParser.Binary_0000_ReadSection: Wrong section signature.');
+    end
+  else raise Exception.Create('TIFXParser.Binary_0000_ReadSection: Not enough data for section.');
+except
+  FreeAndNil(Result);
+  raise;
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIFXParser.Binary_0000_ReadKey: TIFXKeyNode;
+var
+  BinSize:  UInt64;
+
+  procedure ValReadCheckAndRaise(Val,Exp: TMemSize);
+  begin
+    If Val <> Exp then
+      raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Not enough data for key value.');
+  end;
+
+begin
+Result := TIFXKeyNode.Create(fFileNode.SettingsPtr);
+try
+  If (fStream.Size - fStream.Position) >= ((SizeOf(UInt32) * 3) + 2{value enc. and type}) then
+    begin
+      If Stream_ReadUInt32(fStream) = IFX_BINI_SIGNATURE_KEY then
+        begin
+          Result.NameStr := Binary_0000_ReadString;
+          Result.Comment := Binary_0000_ReadString;
+          Result.ValueEncoding := TIFXValueEncoding(Stream_ReadUInt8(fStream));
+          Result.ValueType := TIFXValueType(Stream_ReadUInt8(fStream));
+          // read value data
+          with Result.ValueDataPtr^ do
+            case Result.ValueType of
+              ivtBool:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,BoolValue,SizeOf(Boolean)),SizeOf(Boolean));
+              ivtInt8:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Int8Value,SizeOf(Int8)),SizeOf(Int8));
+              ivtUInt8:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,UInt8Value,SizeOf(UInt8)),SizeOf(UInt8));
+              ivtInt16:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Int16Value,SizeOf(Int16)),SizeOf(Int16));
+              ivtUInt16:    ValReadCheckAndRaise(Stream_ReadBuffer(fStream,UInt16Value,SizeOf(UInt16)),SizeOf(UInt16));
+              ivtInt32:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Int32Value,SizeOf(Int32)),SizeOf(Int32));
+              ivtUInt32:    ValReadCheckAndRaise(Stream_ReadBuffer(fStream,UInt32Value,SizeOf(UInt32)),SizeOf(UInt32));
+              ivtInt64:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Int64Value,SizeOf(Int64)),SizeOf(Int64));
+              ivtUInt64:    ValReadCheckAndRaise(Stream_ReadBuffer(fStream,UInt64Value,SizeOf(UInt64)),SizeOf(UInt64));
+              ivtFloat32:   ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Float32Value,SizeOf(Float32)),SizeOf(Float32));
+              ivtFloat64:   ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Float64Value,SizeOf(Float64)),SizeOf(Float64));
+              ivtDate:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,DateValue,SizeOf(TDateTime)),SizeOf(TDateTime));
+              ivtTime:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TimeValue,SizeOf(TDateTime)),SizeOf(TDateTime));
+              ivtDateTime:  ValReadCheckAndRaise(Stream_ReadBuffer(fStream,DateTimeValue,SizeOf(TDateTime)),SizeOf(TDateTime));
+              ivtBinary:    begin
+                              ValReadCheckAndRaise(Stream_ReadUInt64(fStream,BinSize),SizeOf(UInt64));
+                              BinaryValueSize := TMemSize(BinSize);
+                              GetMem(BinaryValuePtr,BinaryValueSize);
+                              try
+                                ValReadCheckAndRaise(Stream_ReadBuffer(fStream,BinaryValuePtr^,BinaryValueSize),BinaryValueSize);
+                                BinaryValueOwned := True;
+                              except
+                                FreeMem(BinaryValuePtr,BinaryValueSize);
+                                BinaryValuePtr := nil;
+                                raise;
+                              end;
+                            end;
+            else
+              {ivtString}
+              StringValue := Binary_0000_ReadString;
+            end;
+
+        end
+      else raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Wrong key signature.');
+    end
+  else raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Not enough data for key.');
+except
+  FreeAndNil(Result);
+  raise;
 end;
 end;
 
@@ -332,7 +472,7 @@ begin
 fStream := Stream;
 // write BOM if requested
 If fSettingsPtr.WriteByteOrderMask then
-  fStream.WriteBuffer(IFX_UTF8BOM,SizeOf(IFX_UTF8BOM));
+  Stream_WriteBuffer(fStream,IFX_UTF8BOM,SizeOf(IFX_UTF8BOM));
 fEmptyLinePos := fStream.Position;
 // write file comment
 Text_WriteString(ConstructCommentBlock(fFileNode.Comment));
@@ -366,13 +506,16 @@ fStream := Stream;
 // clear file node
 fFileNode.ClearSections;
 fFileNode.Comment := '';
-If (fStream.Size - fStream.Position) >= IFX_BINI_MINFILESIZE then
+If (fStream.Size - fStream.Position) >= 1 then
   begin
     // read first 3 bytes and if they contain BOM, ignore them
-    fStream.ReadBuffer(BOM_Buffer,SizeOf(BOM_Buffer));
-    If (BOM_Buffer[0] <> IFX_UTF8BOM[0]) or (BOM_Buffer[1] <> IFX_UTF8BOM[1]) or
-      (BOM_Buffer[2] <> IFX_UTF8BOM[2]) then
-      fStream.Seek(-3,soCurrent);
+    If (fStream.Size - fStream.Position) >= 3 then
+      begin
+        Stream_ReadBuffer(fStream,BOM_Buffer,SizeOf(BOM_Buffer));
+        If (BOM_Buffer[0] <> IFX_UTF8BOM[0]) or (BOM_Buffer[1] <> IFX_UTF8BOM[1]) or
+          (BOM_Buffer[2] <> IFX_UTF8BOM[2]) then
+          fStream.Seek(-3,soCurrent);
+      end;
     SetLength(fIniString,fStream.Size - fStream.Position);
     If Length(fIniString) > 0 then
       begin
@@ -389,7 +532,7 @@ procedure TIFXParser.WriteBinary(Stream: TStream);
 var
   i:  Integer;
 begin
-// preapre file header, size will be filled later
+// prepare file header, size will be filled later
 fBinFileHeader.Signature := IFX_BINI_SIGNATURE_FILE;
 fBinFileHeader.Structure := IFX_BINI_STRUCT_0;  // later implement selectable
 fBinFileHeader.Flags := 0;
@@ -406,8 +549,11 @@ try
           Binary_0000_WriteSection(fFileNode[i]);
         fBinFileHeader.DataSize := UInt64(fStream.Size);
         // save header and complete data to output stream
-        Stream.WriteBuffer(fBinFileHeader,SizeOf(TIFXBiniFileHeader));
-        Stream.WriteBuffer(TMemoryStream(fStream).Memory^,fStream.Size);
+        Stream_WriteBuffer(Stream,fBinFileHeader,SizeOf(TIFXBiniFileHeader));
+      {
+        data compression and encryption goes here <<<
+      }
+        Stream_WriteBuffer(Stream,TMemoryStream(fStream).Memory^,fStream.Size);
       end;
   else
     raise Exception.CreateFmt('TIFXParser.WriteBinary: Unknown binary format (%d).',[fBinFileHeader.Structure]);
@@ -415,6 +561,45 @@ try
 finally
   FreeAndNil(fStream);
 end
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIFXParser.ReadBinary(Stream: TStream);
+begin
+// clear file node
+fFileNode.ClearSections;
+fFileNode.Comment := '';
+If (Stream.Size - Stream.Position) >= SizeOf(TIFXBiniFileHeader) then
+  begin
+    Stream_ReadBuffer(Stream,fBinFileHeader,SizeOf(TIFXBiniFileHeader));
+    // check signature
+    If fBinFileHeader.Signature = IFX_BINI_SIGNATURE_FILE then
+      begin
+        If (Stream.Size - Stream.Position) >= fBinFileHeader.DataSize then
+          begin
+            fStream := TMemoryStream.Create;
+            try
+              fStream.CopyFrom(Stream,fBinFileHeader.DataSize);
+              fStream.Seek(0,soBeginning);
+            {
+              data decompression and decryption goes here <<<
+            }
+              case fBinFileHeader.Structure of
+                IFX_BINI_STRUCT_0:  Binary_0000_ReadData;
+              else
+                raise Exception.CreateFmt('TIFXParser.ReadBinary: Unknown binary format (%d).',[fBinFileHeader.Structure]);
+              end;
+            finally
+              fStream.Free;
+            end;
+          end
+        else raise Exception.Create('TIFXParser.ReadBinary: Stream is too small for declared data.');
+      end
+    else raise Exception.CreateFmt('TIFXParser.ReadBinary: Wrong file signature (0x%.8x).',[fBinFileHeader.Signature]);
+  end
+else raise Exception.CreateFmt('TIFXParser.ReadBinary: Not enough data (%d) for file header.',
+                               [Stream.Size - Stream.Position]);
 end;
 
 end.

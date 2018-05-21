@@ -45,6 +45,9 @@ type
     procedure SaveToTextualFile(const FileName: String); virtual;
     procedure SaveToBinaryFile(const FileName: String); virtual;
     procedure SaveToFile(const FileName: String); virtual;
+
+    procedure LoadFromBinaryStream(Stream: TStream); virtual;
+    procedure LoadFromBinaryFile(const FileName: String); virtual;
     // structure access
     Function IndexOfSection(const Section: TIFXString): Integer; virtual;
     Function IndexOfKey(const Section, Key: TIFXString): TIFXNodeIndices; overload; virtual;
@@ -381,6 +384,23 @@ end;
 procedure TIniFileEx.SaveToFile(const FileName: String);
 begin
 SaveToTextualFile(FileName);
+end;
+
+procedure TIniFileEx.LoadFromBinaryStream(Stream: TStream);
+begin
+fParser.ReadBinary(Stream);
+end;
+
+procedure TIniFileEx.LoadFromBinaryFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  LoadFromBinaryStream(FileStream);
+finally
+  FileStream.Free;
+end;
 end;
 
 //------------------------------------------------------------------------------
@@ -1353,7 +1373,8 @@ If not fSettings.ReadOnly then
           ValueDataPtr^.BinaryValueOwned := True;
         end;
     except
-      FreeMem(TempMem,Stream.Size)
+      FreeMem(TempMem,Stream.Size);
+      raise;
     end;
   end;
 end;
@@ -1377,7 +1398,8 @@ If not fSettings.ReadOnly then
           ValueEncoding := Encoding;
         end;
     except
-      FreeMem(TempMem,Stream.Size)
+      FreeMem(TempMem,Stream.Size);
+      raise;
     end;
   end;
 end;
@@ -1400,7 +1422,8 @@ If not fSettings.ReadOnly then
           ValueDataPtr^.BinaryValueOwned := True;
         end;
     except
-      FreeMem(TempMem,Stream.Size)
+      FreeMem(TempMem,Stream.Size);
+      raise;
     end;
   end;
 end;
@@ -1424,7 +1447,8 @@ If not fSettings.ReadOnly then
           ValueEncoding := Encoding;
         end;
     except
-      FreeMem(TempMem,Stream.Size)
+      FreeMem(TempMem,Stream.Size);
+      raise
     end;
   end;
 end;
