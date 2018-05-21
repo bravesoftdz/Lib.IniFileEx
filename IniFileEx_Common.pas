@@ -44,11 +44,11 @@ type
 Function IFXEncFromValueEnc(ValueEncoding: TIFXValueEncoding): TBinTextEncoding;
 Function IFXValueEncFromEnc(Encoding: TBinTextEncoding): TIFXValueEncoding;
 
-Function ValueTypeToByte(ValueType: TIFXValueType): Byte;
-Function ByteToValueType(ByteValue: Byte): TIFXValueType;
+Function IFXValueTypeToByte(ValueType: TIFXValueType): Byte;
+Function IFXByteToValueType(ByteValue: Byte): TIFXValueType;
 
-Function ValueEncodingToByte(ValueEncoding: TIFXValueEncoding): Byte;
-Function ByteToValueEncoding(ByteValue: Byte): TIFXValueEncoding;
+Function IFXValueEncodingToByte(ValueEncoding: TIFXValueEncoding): Byte;
+Function IFXByteToValueEncoding(ByteValue: Byte): TIFXValueEncoding;
 
 const
   IFX_VALTYPE_BOOL     = 0;
@@ -265,7 +265,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function ValueTypeToByte(ValueType: TIFXValueType): Byte;
+Function IFXValueTypeToByte(ValueType: TIFXValueType): Byte;
 begin
 case ValueType of
   ivtBool:      Result := IFX_VALTYPE_BOOL;
@@ -291,7 +291,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function ByteToValueType(ByteValue: Byte): TIFXValueType;
+Function IFXByteToValueType(ByteValue: Byte): TIFXValueType;
 begin
 case ByteValue of
   IFX_VALTYPE_BOOL:     Result := ivtBool;
@@ -317,7 +317,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function ValueEncodingToByte(ValueEncoding: TIFXValueEncoding): Byte;
+Function IFXValueEncodingToByte(ValueEncoding: TIFXValueEncoding): Byte;
 begin
 case ValueEncoding of
   iveBase2:       Result := IFX_VALENC_BASE2;
@@ -333,7 +333,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function ByteToValueEncoding(ByteValue: Byte): TIFXValueEncoding;
+Function IFXByteToValueEncoding(ByteValue: Byte): TIFXValueEncoding;
 begin
 case ByteValue of
   IFX_VALENC_BASE2:   Result := iveBase2;
