@@ -44,6 +44,37 @@ type
 Function IFXEncFromValueEnc(ValueEncoding: TIFXValueEncoding): TBinTextEncoding;
 Function IFXValueEncFromEnc(Encoding: TBinTextEncoding): TIFXValueEncoding;
 
+Function ValueTypeToByte(ValueType: TIFXValueType): Byte;
+Function ByteToValueType(ByteValue: Byte): TIFXValueType;
+
+Function ValueEncodingToByte(ValueEncoding: TIFXValueEncoding): Byte;
+Function ByteToValueEncoding(ByteValue: Byte): TIFXValueEncoding;
+
+const
+  IFX_VALTYPE_BOOL     = 0;
+  IFX_VALTYPE_INT8     = 1;
+  IFX_VALTYPE_UINT8    = 2;
+  IFX_VALTYPE_INT16    = 3;
+  IFX_VALTYPE_UINT16   = 4;
+  IFX_VALTYPE_INT32    = 5;
+  IFX_VALTYPE_UINT32   = 6;
+  IFX_VALTYPE_INT64    = 7;
+  IFX_VALTYPE_UINT64   = 8;
+  IFX_VALTYPE_FLOAT32  = 9;
+  IFX_VALTYPE_FLOAT64  = 10;
+  IFX_VALTYPE_DATE     = 11;
+  IFX_VALTYPE_TIME     = 12;
+  IFX_VALTYPE_DATETIME = 13;
+  IFX_VALTYPE_STRING   = 14;
+  IFX_VALTYPE_BINARY   = 15;
+
+  IFX_VALENC_BASE2   = 0;
+  IFX_VALENC_BASE64  = 1;
+  IFX_VALENC_BASE85  = 2;
+  IFX_VALENC_HEXADEC = 3;
+  IFX_VALENC_NUMBER  = 4;
+  IFX_VALENC_DEFAULT = 5;
+
 type
   TIFXValueData = record
     StringValue:  TIFXString;
@@ -229,6 +260,90 @@ case Encoding of
   bteHexadecimal: Result := iveHexadecimal;
 else
   raise Exception.CreateFmt('ValueEncFromEnc: Unsupported encoding (%d).',[Ord(Encoding)]);
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function ValueTypeToByte(ValueType: TIFXValueType): Byte;
+begin
+case ValueType of
+  ivtBool:      Result := IFX_VALTYPE_BOOL;
+  ivtInt8:      Result := IFX_VALTYPE_INT8;
+  ivtUInt8:     Result := IFX_VALTYPE_UINT8;
+  ivtInt16:     Result := IFX_VALTYPE_INT16;
+  ivtUInt16:    Result := IFX_VALTYPE_UINT16;
+  ivtInt32:     Result := IFX_VALTYPE_INT32;
+  ivtUInt32:    Result := IFX_VALTYPE_UINT32;
+  ivtInt64:     Result := IFX_VALTYPE_INT64;
+  ivtUInt64:    Result := IFX_VALTYPE_UINT64;
+  ivtFloat32:   Result := IFX_VALTYPE_FLOAT32;
+  ivtFloat64:   Result := IFX_VALTYPE_FLOAT64;
+  ivtDate:      Result := IFX_VALTYPE_DATE;
+  ivtTime:      Result := IFX_VALTYPE_TIME;
+  ivtDateTime:  Result := IFX_VALTYPE_DATETIME;
+  ivtString:    Result := IFX_VALTYPE_STRING;
+  ivtBinary:    Result := IFX_VALTYPE_BINARY;
+else
+  raise Exception.CreateFmt('ValueTypeToByte: Unknown value type (%d).',[Ord(ValueType)]);
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function ByteToValueType(ByteValue: Byte): TIFXValueType;
+begin
+case ByteValue of
+  IFX_VALTYPE_BOOL:     Result := ivtBool;
+  IFX_VALTYPE_INT8:     Result := ivtInt8;
+  IFX_VALTYPE_UINT8:    Result := ivtUInt8;
+  IFX_VALTYPE_INT16:    Result := ivtInt16;
+  IFX_VALTYPE_UINT16:   Result := ivtUInt16;
+  IFX_VALTYPE_INT32:    Result := ivtInt32;
+  IFX_VALTYPE_UINT32:   Result := ivtUInt32;
+  IFX_VALTYPE_INT64:    Result := ivtInt32;
+  IFX_VALTYPE_UINT64:   Result := ivtUInt32;
+  IFX_VALTYPE_FLOAT32:  Result := ivtFloat32;
+  IFX_VALTYPE_FLOAT64:  Result := ivtFloat64;
+  IFX_VALTYPE_DATE:     Result := ivtDate;
+  IFX_VALTYPE_TIME:     Result := ivtTime;
+  IFX_VALTYPE_DATETIME: Result := ivtDateTime;
+  IFX_VALTYPE_STRING:   Result := ivtString;
+  IFX_VALTYPE_BINARY:   Result := ivtBinary;
+else
+  raise Exception.CreateFmt('ByteToValueType: Unknown value type (%d).',[ByteValue]);
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function ValueEncodingToByte(ValueEncoding: TIFXValueEncoding): Byte;
+begin
+case ValueEncoding of
+  iveBase2:       Result := IFX_VALENC_BASE2;
+  iveBase64:      Result := IFX_VALENC_BASE64;
+  iveBase85:      Result := IFX_VALENC_BASE85;
+  iveHexadecimal: Result := IFX_VALENC_HEXADEC;
+  iveNumber:      Result := IFX_VALENC_NUMBER;
+  iveDefault:     Result := IFX_VALENC_DEFAULT;
+else
+  raise Exception.CreateFmt('ValueEncodingToByte: Unknown value encoding (%d).',[Ord(ValueEncoding)]);
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function ByteToValueEncoding(ByteValue: Byte): TIFXValueEncoding;
+begin
+case ByteValue of
+  IFX_VALENC_BASE2:   Result := iveBase2;
+  IFX_VALENC_BASE64:  Result := iveBase64;
+  IFX_VALENC_BASE85:  Result := iveBase85;
+  IFX_VALENC_HEXADEC: Result := iveHexadecimal;
+  IFX_VALENC_NUMBER:  Result := iveNumber;
+  IFX_VALENC_DEFAULT: Result := iveDefault;
+else
+  raise Exception.CreateFmt('ByteToValueEncoding: Unknown value encoding (%d).',[ByteValue]);
 end;
 end;
 

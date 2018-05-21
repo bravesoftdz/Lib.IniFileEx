@@ -313,7 +313,7 @@ try
         begin
           Result.NameStr := Binary_0000_ReadString;
           Result.Comment := Binary_0000_ReadString;
-          Result.ValueEncoding := TIFXValueEncoding(Stream_ReadUInt8(fStream));
+          Result.ValueEncoding := TIFXValueEncoding(Stream_ReadUInt8(fStream)); // do proper conversion
           Result.ValueType := TIFXValueType(Stream_ReadUInt8(fStream));
           // read value data
           with Result.ValueDataPtr^ do
@@ -334,6 +334,8 @@ try
               ivtDateTime:  ValReadCheckAndRaise(Stream_ReadBuffer(fStream,DateTimeValue,SizeOf(TDateTime)),SizeOf(TDateTime));
               ivtBinary:    begin
                               ValReadCheckAndRaise(Stream_ReadUInt64(fStream,BinSize),SizeOf(UInt64));
+                              If BinSize > UInt64(High(TMemSize)) then
+                                raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Too much raw data.');
                               BinaryValueSize := TMemSize(BinSize);
                               GetMem(BinaryValuePtr,BinaryValueSize);
                               try
