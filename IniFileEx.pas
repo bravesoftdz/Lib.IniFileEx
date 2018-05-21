@@ -7,13 +7,14 @@ interface
 uses
   Classes, 
   AuxTypes, AuxClasses,
-  IniFileEx_Common, IniFileEx_Nodes;
+  IniFileEx_Common, IniFileEx_Nodes, IniFileEx_Parsing;
 
 type
   TIniFileEx = class(TCustomObject)
   private
     fSettings:          TIFXSettings;
     fFileNode:          TIFXFileNode;
+    fParser:            TIFXParser;
     fOnSectionCreate:   TIFXSectionNodeEvent;
     fOnSectionDestroy:  TIFXSectionNodeEvent;
     fOnKeyCreate:       TIFXKeyNodeEvent;
@@ -38,6 +39,12 @@ type
     constructor Create;
     destructor Destroy; override;
     // file/stream manipulation
+    procedure SaveToTextualStream(Stream: TStream); virtual;
+    procedure SaveToBinaryStream(Stream: TStream); virtual;
+    procedure SaveToStream(Stream: TStream); virtual;    
+    procedure SaveToTextualFile(const FileName: String); virtual;
+    procedure SaveToBinaryFile(const FileName: String); virtual;
+    procedure SaveToFile(const FileName: String); virtual;
     // structure access
     Function IndexOfSection(const Section: TIFXString): Integer; virtual;
     Function IndexOfKey(const Section, Key: TIFXString): TIFXNodeIndices; overload; virtual;
@@ -79,8 +86,8 @@ type
     procedure SetValueEncoding(const Section, Key: TIFXString; Encoding: TIFXValueEncoding); virtual;
     Function GetValueType(const Section, Key: TIFXString): TIFXValueType; virtual;
     procedure ReadSections(Strings: TStrings); virtual;
+    procedure ReadSection(const Section: TIFXString; Strings: TStrings); virtual;    
     procedure ReadSectionValues(const Section: TIFXString; Strings: TStrings); virtual;
-    procedure ReadSection(const Section: TIFXString; Strings: TStrings); virtual;
     // values writing
     procedure WriteBool(const Section, Key: TIFXString; Value: Boolean); overload; virtual;
     procedure WriteBool(const Section, Key: TIFXString; Value: Boolean; Encoding: TIFXValueEncoding); overload; virtual;
@@ -155,6 +162,7 @@ type
     Function GetValueString(const Section, Key: TIFXString): TIFXString; virtual;
     procedure SetValueString(const Section, Key, ValueStr: TIFXString); virtual;
     property FileNode: TIFXFileNode read fFileNode;
+    property Parser: TIFXParser read fParser; 
     property SectionNodes[SectionIndex: Integer]: TIFXSectionNode read GetSectionNodeIdx;
     property KeyNodes[SectionIndex, KeyIndex: Integer]: TIFXKeyNode read GetKeyNodeIdx;
     property OnSectionCreate: TIFXSectionNodeEvent read fOnSectionCreate write fOnSectionCreate;
@@ -250,12 +258,14 @@ fFileNode.OnSectionCreate := SectionCreateHandler;
 fFileNode.OnSectionDestroy := SectionDestroyHandler;
 fFileNode.OnKeyCreate := KeyCreateHandler;
 fFileNode.OnKeyDestroy := KeyDestroyHandler;
+fParser := TIFXParser.Create(@fSettings,fFileNode);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TIniFileEx.Finalize;
 begin
+fParser.Free;
 fFileNode.Free;
 end;
 
@@ -325,6 +335,52 @@ destructor TIniFileEx.Destroy;
 begin
 Finalize;
 inherited;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SaveToTextualStream(Stream: TStream);
+begin
+fParser.WriteTextual(Stream);
+end;
+
+procedure TIniFileEx.SaveToBinaryStream(Stream: TStream);
+begin
+fParser.WriteBinary(Stream);
+end;
+
+procedure TIniFileEx.SaveToStream(Stream: TStream);
+begin
+SaveToTextualStream(Stream);
+end;
+
+procedure TIniFileEx.SaveToTextualFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
+try
+  SaveToTextualStream(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+
+procedure TIniFileEx.SaveToBinaryFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
+try
+  SaveToBinaryStream(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+
+procedure TIniFileEx.SaveToFile(const FileName: String);
+begin
+SaveToTextualFile(FileName);
 end;
 
 //------------------------------------------------------------------------------
@@ -855,7 +911,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TIniFileEx.ReadSectionValues(const Section: TIFXString; Strings: TStrings);
+procedure TIniFileEx.ReadSection(const Section: TIFXString; Strings: TStrings);
 var
   SectionNode:  TIFXSectionNode;
   i:            Integer;
@@ -870,7 +926,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TIniFileEx.ReadSection(const Section: TIFXString; Strings: TStrings);
+procedure TIniFileEx.ReadSectionValues(const Section: TIFXString; Strings: TStrings);
 var
   SectionNode:  TIFXSectionNode;
   i:            Integer;
@@ -879,7 +935,7 @@ If fFileNode.FindSection(Section,SectionNode) then
   begin
     Strings.Clear;
     For i := SectionNode.LowIndex to SectionNode.HighIndex do
-      ; {$message 'implement line building'}
+      Strings.Add(IFXStrToStr(fParser.ConstructKeyValueLine(SectionNode[i])));
   end;
 end;
 

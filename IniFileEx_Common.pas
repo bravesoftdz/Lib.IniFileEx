@@ -15,6 +15,9 @@ type
 Function IFXStrToStr(const IFXStr: TIFXString): String;{$IFDEF CanInline} inline; {$ENDIF}
 Function StrToIFXStr(const Str: String): TIFXString;{$IFDEF CanInline} inline; {$ENDIF}
 
+Function IFXStrToUTF8(const IFXStr: TIFXString): UTF8String;{$IFDEF CanInline} inline; {$ENDIF}
+Function UTF8ToIFXStr(const Str: UTF8String): TIFXString;{$IFDEF CanInline} inline; {$ENDIF}
+
 type
   TIFXHashedString = record
     Str:  TIFXString;
@@ -80,7 +83,7 @@ type
     WhiteSpaceChar:   TIFXChar;
     KeyWhiteSpace:    Boolean;
     ValueWhiteSpace:  Boolean;
-    MaxValueLineLen:  Integer;
+    //MaxValueLineLen:  Integer;
     LineBreak:        TIFXString;
   end;
 
@@ -92,6 +95,7 @@ type
     DuplicityBehavior:      TIFXDuplicityBehavior;
     DuplicityRenameOldStr:  TIFXString;
     DuplicityRenameNewStr:  TIFXString;
+    WriteByteOrderMask:     Boolean;
   end;
   PIFXSettings = ^TIFXSettings;
 
@@ -123,6 +127,28 @@ end;
 Function StrToIFXStr(const Str: String): TIFXString;
 begin
 Result := StrToUnicode(Str);
+end;
+
+//------------------------------------------------------------------------------
+
+Function IFXStrToUTF8(const IFXStr: TIFXString): UTF8String;
+begin
+{$IF Declared(StringToUTF8)}
+Result := StringToUTF8(Str);
+{$ELSE}
+Result := UTF8Encode(IFXStr);
+{$IFEND}
+end;
+
+//------------------------------------------------------------------------------
+
+Function UTF8ToIFXStr(const Str: UTF8String): TIFXString;
+begin
+{$IF Declared(UTF8ToString)}
+Result := UTF8ToString(IFXStr);
+{$ELSE}
+Result := UTF8Decode(Str);
+{$IFEND}
 end;
 
 //------------------------------------------------------------------------------
@@ -226,13 +252,13 @@ begin
   so I cannot use constant and assign everything in one step, yay!
 }
 Sett.FormatSettings.ThousandSeparator := #0;
-Sett.FormatSettings.DecimalSeparator := '.';
-Sett.FormatSettings.DateSeparator := '-';
-Sett.FormatSettings.TimeSeparator := ':';
-Sett.FormatSettings.ShortDateFormat := 'yyyy"-"mm"-"dd';
-Sett.FormatSettings.LongDateFormat := 'yyyy"-"mm"-"dd';
-Sett.FormatSettings.ShortTimeFormat := 'hh":"nn":"ss';
-Sett.FormatSettings.LongTimeFormat := 'hh":"nn":"ss';
+Sett.FormatSettings.DecimalSeparator  := '.';
+Sett.FormatSettings.DateSeparator     := '-';
+Sett.FormatSettings.TimeSeparator     := ':';
+Sett.FormatSettings.ShortDateFormat   := 'yyyy"-"mm"-"dd';
+Sett.FormatSettings.LongDateFormat    := 'yyyy"-"mm"-"dd';
+Sett.FormatSettings.ShortTimeFormat   := 'hh":"nn":"ss';
+Sett.FormatSettings.LongTimeFormat    := 'hh":"nn":"ss';
 Sett.FormatSettings.TwoDigitYearCenturyWindow := 50;
 For i := Low(def_ShortMonthNames) to High(def_ShortMonthNames) do
   Sett.FormatSettings.ShortMonthNames[i] := def_ShortMonthNames[i];
@@ -243,25 +269,26 @@ For i := Low(def_ShortDayNames) to High(def_ShortDayNames) do
 For i := Low(def_LongDayNames) to High(def_LongDayNames) do
   Sett.FormatSettings.LongDayNames[i] := def_LongDayNames[i];
 // ini file formatting options
-Sett.IniFormat.EscapeChar := '\';
-Sett.IniFormat.QuoteChar := '"';
-Sett.IniFormat.NumericChar := '#';
-Sett.IniFormat.ForceQuote := False;
-Sett.IniFormat.CommentChar := ';';
+Sett.IniFormat.EscapeChar       := '\';
+Sett.IniFormat.QuoteChar        := '"';
+Sett.IniFormat.NumericChar      := '#';
+Sett.IniFormat.ForceQuote       := False;
+Sett.IniFormat.CommentChar      := ';';
 Sett.IniFormat.SectionStartChar := '[';
-Sett.IniFormat.SectionEndChar := ']';
-Sett.IniFormat.ValueDelimChar := '=';
-Sett.IniFormat.WhiteSpaceChar := ' ';
-Sett.IniFormat.KeyWhiteSpace := True;
-Sett.IniFormat.ValueWhiteSpace := True;
-Sett.IniFormat.MaxValueLineLen := -1;
-Sett.IniFormat.LineBreak := StrToIFXStr(sLineBreak);
+Sett.IniFormat.SectionEndChar   := ']';
+Sett.IniFormat.ValueDelimChar   := '=';
+Sett.IniFormat.WhiteSpaceChar   := ' ';
+Sett.IniFormat.KeyWhiteSpace    := True;
+Sett.IniFormat.ValueWhiteSpace  := True;
+//Sett.IniFormat.MaxValueLineLen  := -1;
+Sett.IniFormat.LineBreak        := StrToIFXStr(sLineBreak);
 // other fields
-Sett.FullNameEval := True;
-Sett.ReadOnly := False;
-Sett.DuplicityBehavior := idbDrop;
+Sett.FullNameEval          := True;
+Sett.ReadOnly              := False;
+Sett.DuplicityBehavior     := idbDrop;
 Sett.DuplicityRenameOldStr := '_old';
 Sett.DuplicityRenameNewStr := '_new';
+Sett.WriteByteOrderMask    := False;
 end;
 
 //------------------------------------------------------------------------------

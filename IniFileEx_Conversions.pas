@@ -210,9 +210,16 @@ For i := 1 to Length(Str) do
         Quoted := True;
      end;
   else
-    If Ord(Str[i]) in [Ord(FormatSettings.EscapeChar),Ord(FormatSettings.QuoteChar)] then
+    If (Str[i] = FormatSettings.EscapeChar) or (Str[i] = FormatSettings.QuoteChar) then
       begin
         Inc(Temp,2);
+        Quoted := True;
+      end
+    else If Str[i] = FormatSettings.CommentChar then
+      begin
+        // comment char does not need to be escaped,
+        // but string containing it must be quoted
+        Inc(Temp);
         Quoted := True;
       end
     else Inc(Temp);
@@ -258,7 +265,7 @@ For i := 1 to Length(Str) do
         Inc(Temp,2);
       end;
   else
-    If Ord(Str[i]) in [Ord(FormatSettings.EscapeChar),Ord(FormatSettings.QuoteChar)] then
+    If (Str[i] = FormatSettings.EscapeChar) or (Str[i] = FormatSettings.QuoteChar) then
       begin
         Result[Temp] := FormatSettings.EscapeChar;
         Result[Temp + 1] := Str[i];
@@ -321,7 +328,7 @@ If Length(Str) > 0 then
                       end
                     else Break{while...};
                   end
-                else If Ord(Str[i + 1]) in [Ord(FormatSettings.EscapeChar),Ord(FormatSettings.QuoteChar)] then
+                else If (Str[i + 1] = FormatSettings.EscapeChar) or (Str[i + 1] = FormatSettings.QuoteChar) then
                   SetAndAdvance(Str[i + 1],2,1)
                 else
                   Break{while...};
