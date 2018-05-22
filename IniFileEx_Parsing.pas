@@ -17,7 +17,7 @@ type
     DataSize:   UInt64;
   end;
 
-  TIFXTextLineType = (tltInit,tltEmpty,tltComment,tltSection,tltKey);
+  TIFXTextLineType = (tltEmpty,tltComment,tltSection,tltKey);
 
 type
   TIFXParser = class(TObject)
@@ -28,8 +28,8 @@ type
     // for textual processing...
     fEmptyLinePos:        Int64;
     fIniStrings:          TUTF8StringList;
-    fFileComment:         TIFXString;
-    fCommentStack:        array of TIFXString;
+    fLastComment:         TIFXString;
+    fFileCommentSet:      Boolean;
     fLastTextLineType:    TIFXTextLineType;
     fCurrentSectionNode:  TIFXSectionNode;
     // for binary processing...
@@ -41,10 +41,8 @@ type
     Function Text_WriteSection(SectionNode: TIFXSectionNode): TMemSize; virtual;
     Function Text_WriteKey(KeyNode: TIFXKeyNode): TMemSize; virtual;
     // reading textual ini
-    procedure Text_PushComment(const Comment: TIFXString); virtual;
-    procedure Text_AppendComment(const Comment: TIFXString); virtual;
-    Function Text_PeekComment: TIFXString; virtual;
-    Function Text_PopComment: TIFXString; virtual;
+    procedure Text_AddToLastComment(const Comment: TIFXString); virtual;
+    Function Text_ConsumeLastComment: TIFXString; virtual;
     procedure Text_ReadLine; virtual;
     procedure Text_ReadCommentLine; virtual;
     procedure Text_ReadSectionLine; virtual;
@@ -179,47 +177,19 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TIFXParser.Text_PushComment(const Comment: TIFXString);
+procedure TIFXParser.Text_AddToLastComment(const Comment: TIFXString);
 begin
-If fLastTextLineType <> tltInit then
-  begin
-    SetLength(fCommentStack,Length(fCommentStack) + 1);
-    fCommentStack[High(fCommentStack)] := Comment;
-  end
-else fFileComment := Comment;
-end;
-
-//------------------------------------------------------------------------------
-
-procedure TIFXParser.Text_AppendComment(const Comment: TIFXString);
-begin
-If Length(fCommentStack) > 0 then
-  fCommentStack[High(fCommentStack)] := fCommentStack[High(fCommentStack)] +
-    fSettingsPtr.IniFormat.LineBreak + Comment
+If Length(fLastComment) > 0 then
+  fLastComment := fLastComment + fSettingsPtr^.IniFormat.LineBreak + Comment
 else
-  fFileComment := fFileComment + fSettingsPtr^.IniFormat.LineBreak + Comment;
+  fLastComment := Comment;
 end;
-
 //------------------------------------------------------------------------------
 
-Function TIFXParser.Text_PeekComment: TIFXString;
+Function TIFXParser.Text_ConsumeLastComment: TIFXString;
 begin
-If Length(fCommentStack) > 0 then
-  Result := fCommentStack[High(fCommentStack)]
-else
-  Result := '';
-end;
-
-//------------------------------------------------------------------------------
-
-Function TIFXParser.Text_PopComment: TIFXString;
-begin
-If Length(fCommentStack) > 0 then
-  begin
-    Result := fCommentStack[High(fCommentStack)];
-    SetLength(fCommentStack,Length(fCommentStack) - 1);
-  end
-else Result := '';
+Result := fLastComment;
+fLastComment := '';
 end;
 
 //------------------------------------------------------------------------------
@@ -248,12 +218,26 @@ end;
 
 procedure TIFXParser.Text_ReadCommentLine;
 begin
-If fLastTextLineType <> tltComment then
-  Text_PushComment(UTF8ToIFXStr(Copy(fIniStrings[fIniStrings.UserData],2,
-    Length(fIniStrings[fIniStrings.UserData]) - 1)))
-else
-  Text_AppendComment(UTF8ToIFXStr(Copy(fIniStrings[fIniStrings.UserData],2,
-    Length(fIniStrings[fIniStrings.UserData]) - 1)));
+If (fLastTextLineType <> tltComment) and (Length(fLastComment) > 0) then
+  begin
+    If not fFileCommentSet then
+      begin
+        fFileNode.Comment := fLastComment;
+        fFileCommentSet := True;
+      end
+    else
+      begin
+        If not Assigned(fCurrentSectionNode) then
+          begin
+            fCurrentSectionNode := TIFXSectionNode.Create('',fFileNode.SettingsPtr);
+            fCurrentSectionNode.Comment := fLastComment;
+            fFileNode.AddSectionNode(fCurrentSectionNode);
+          end;
+      end;
+    fLastComment := '';
+  end;
+Text_AddToLastComment(UTF8ToIFXStr(Copy(fIniStrings[fIniStrings.UserData],2,
+  Length(fIniStrings[fIniStrings.UserData]) - 1)));
 fLastTextLineType := tltComment;
 end;
 
@@ -285,7 +269,7 @@ If p > 0 then
         idbReplace:
           begin
             fCurrentSectionNode := fFileNode[i];
-            fCurrentSectionNode.Comment := Text_PopComment;
+            fCurrentSectionNode.Comment := Text_ConsumeLastComment;
           end;
         idbRenameOld:
           begin
@@ -299,7 +283,7 @@ If p > 0 then
               end
             else fFileNode[i].NameStr := TempStr + fSettingsPtr^.DuplicityRenameOldStr;
             fCurrentSectionNode := TIFXSectionNode.Create(TempStr,fFileNode.SettingsPtr);
-            fCurrentSectionNode.Comment := Text_PopComment;
+            fCurrentSectionNode.Comment := Text_ConsumeLastComment;
             fFileNode.AddSectionNode(fCurrentSectionNode);
           end;
         idbRenameNew:
@@ -313,19 +297,19 @@ If p > 0 then
               end
             else TempStr := TempStr + fSettingsPtr^.DuplicityRenameNewStr;
             fCurrentSectionNode := TIFXSectionNode.Create(TempStr,fFileNode.SettingsPtr);
-            fCurrentSectionNode.Comment := Text_PopComment;
+            fCurrentSectionNode.Comment := Text_ConsumeLastComment;
             fFileNode.AddSectionNode(fCurrentSectionNode);
           end;
       else
         {idbDrop}
         fCurrentSectionNode := fFileNode[i];
-        Text_PopComment;
+        Text_ConsumeLastComment;
       end
     else
       begin
         // section of this name does not yet exist, create node and add it
         fCurrentSectionNode := TIFXSectionNode.Create(TempStr,fFileNode.SettingsPtr);
-        fCurrentSectionNode.Comment := Text_PopComment;
+        fCurrentSectionNode.Comment := Text_ConsumeLastComment;
         fFileNode.AddSectionNode(fCurrentSectionNode);
       end;
     fLastTextLineType := tltSection;  
@@ -358,12 +342,11 @@ If p > 0 then
     // everything in front of delimiter is key, everything behind is value
     KeyName := IFXTrimStr(Copy(TempStr,1,p - 1),fSettingsPtr^.IniFormat.WhiteSpaceChar);
     TempStr := IFXTrimStr(Copy(TempStr,p + 1,Length(TempStr) - p),fSettingsPtr^.IniFormat.WhiteSpaceChar);
-    KeyCmnt := Text_PopComment;
+    KeyCmnt := Text_ConsumeLastComment;
     If not Assigned(fCurrentSectionNode) then
       begin
         // section-less key
         fCurrentSectionNode := TIFXSectionNode.Create('',fFileNode.SettingsPtr);
-        fCurrentSectionNode.Comment := Text_PopComment;
         fFileNode.AddSectionNode(fCurrentSectionNode);
       end;
     i := fCurrentSectionNode.IndexOfKey(KeyName);
@@ -479,9 +462,10 @@ case KeyNode.ValueType of
                   Inc(Result,Stream_WriteUInt64(fStream,UInt64(KeyNode.ValueData.BinaryValueSize)));
                   Inc(Result,Stream_WriteBuffer(fStream,KeyNode.ValueData.BinaryValuePtr^,KeyNode.ValueData.BinaryValueSize));
                 end;
+  ivtString:    Inc(Result,Binary_0000_WriteString(KeyNode.ValueData.StringValue));
 else
-  {ivtString}
-  Inc(Result,Binary_0000_WriteString(KeyNode.ValueData.StringValue));
+  {ivtUndecided}
+  Inc(Result,Binary_0000_WriteString(KeyNode.ValueStr));
 end;
 end;
 
@@ -613,11 +597,13 @@ end;
 
 Function TIFXParser.Binary_0000_ReadKey(SectionNode: TIFXSectionNode; out KeyNode: TIFXKeyNode): Boolean;
 var
-  KeyName:  TIFXString;
-  BinSize:  UInt64;
-  Index:    Integer;
-  Cntr:     Integer;
-  FreeNode: Boolean;
+  KeyName:    TIFXString;
+  BinSize:    UInt64;
+  Index:      Integer;
+  Cntr:       Integer;
+  FreeNode:   Boolean;
+  ValueType:  TIFXValueType;
+  TempValue:  TIFXValueData;
 
   procedure ValReadCheckAndRaise(Val,Exp: TMemSize);
   begin
@@ -689,43 +675,69 @@ try
             end;
           KeyNode.Comment := Binary_0000_ReadString;
           KeyNode.ValueEncoding := IFXByteToValueEncoding(Stream_ReadUInt8(fStream));
-          KeyNode.ValueType := IFXByteToValueType(Stream_ReadUInt8(fStream));
-          // read value data
-          with KeyNode.ValueDataPtr^ do
-            case KeyNode.ValueType of
-              ivtBool:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,BoolValue,SizeOf(Boolean)),SizeOf(Boolean));
-              ivtInt8:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Int8Value,SizeOf(Int8)),SizeOf(Int8));
-              ivtUInt8:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,UInt8Value,SizeOf(UInt8)),SizeOf(UInt8));
-              ivtInt16:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Int16Value,SizeOf(Int16)),SizeOf(Int16));
-              ivtUInt16:    ValReadCheckAndRaise(Stream_ReadBuffer(fStream,UInt16Value,SizeOf(UInt16)),SizeOf(UInt16));
-              ivtInt32:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Int32Value,SizeOf(Int32)),SizeOf(Int32));
-              ivtUInt32:    ValReadCheckAndRaise(Stream_ReadBuffer(fStream,UInt32Value,SizeOf(UInt32)),SizeOf(UInt32));
-              ivtInt64:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Int64Value,SizeOf(Int64)),SizeOf(Int64));
-              ivtUInt64:    ValReadCheckAndRaise(Stream_ReadBuffer(fStream,UInt64Value,SizeOf(UInt64)),SizeOf(UInt64));
-              ivtFloat32:   ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Float32Value,SizeOf(Float32)),SizeOf(Float32));
-              ivtFloat64:   ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Float64Value,SizeOf(Float64)),SizeOf(Float64));
-              ivtDate:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,DateValue,SizeOf(TDateTime)),SizeOf(TDateTime));
-              ivtTime:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TimeValue,SizeOf(TDateTime)),SizeOf(TDateTime));
-              ivtDateTime:  ValReadCheckAndRaise(Stream_ReadBuffer(fStream,DateTimeValue,SizeOf(TDateTime)),SizeOf(TDateTime));
-              ivtBinary:    begin
-                              ValReadCheckAndRaise(Stream_ReadUInt64(fStream,BinSize),SizeOf(UInt64));
-                              If BinSize > UInt64(High(TMemSize)) then
-                                raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Too much raw data.');
-                              BinaryValueSize := TMemSize(BinSize);
-                              GetMem(BinaryValuePtr,BinaryValueSize);
-                              try
-                                ValReadCheckAndRaise(Stream_ReadBuffer(fStream,BinaryValuePtr^,BinaryValueSize),BinaryValueSize);
-                                BinaryValueOwned := True;
-                              except
-                                FreeMem(BinaryValuePtr,BinaryValueSize);
-                                BinaryValuePtr := nil;
-                                raise;
-                              end;
+          ValueType := IFXByteToValueType(Stream_ReadUInt8(fStream));
+          // read value data to temporary storage
+          case ValueType of
+            ivtBool:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.BoolValue,SizeOf(Boolean)),SizeOf(Boolean));
+            ivtInt8:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.Int8Value,SizeOf(Int8)),SizeOf(Int8));
+            ivtUInt8:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.UInt8Value,SizeOf(UInt8)),SizeOf(UInt8));
+            ivtInt16:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.Int16Value,SizeOf(Int16)),SizeOf(Int16));
+            ivtUInt16:    ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.UInt16Value,SizeOf(UInt16)),SizeOf(UInt16));
+            ivtInt32:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.Int32Value,SizeOf(Int32)),SizeOf(Int32));
+            ivtUInt32:    ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.UInt32Value,SizeOf(UInt32)),SizeOf(UInt32));
+            ivtInt64:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.Int64Value,SizeOf(Int64)),SizeOf(Int64));
+            ivtUInt64:    ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.UInt64Value,SizeOf(UInt64)),SizeOf(UInt64));
+            ivtFloat32:   ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.Float32Value,SizeOf(Float32)),SizeOf(Float32));
+            ivtFloat64:   ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.Float64Value,SizeOf(Float64)),SizeOf(Float64));
+            ivtDate:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.DateValue,SizeOf(TDateTime)),SizeOf(TDateTime));
+            ivtTime:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.TimeValue,SizeOf(TDateTime)),SizeOf(TDateTime));
+            ivtDateTime:  ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.DateTimeValue,SizeOf(TDateTime)),SizeOf(TDateTime));
+            ivtBinary:    begin
+                            ValReadCheckAndRaise(Stream_ReadUInt64(fStream,BinSize),SizeOf(UInt64));
+                            If BinSize > UInt64(High(TMemSize)) then
+                              raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Too much raw data.');
+                            TempValue.BinaryValueSize := TMemSize(BinSize);
+                            GetMem(TempValue.BinaryValuePtr,TempValue.BinaryValueSize);
+                            try
+                              ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.BinaryValuePtr^,TempValue.BinaryValueSize),
+                                                   TempValue.BinaryValueSize);
+                              TempValue.BinaryValueOwned := True;
+                            except
+                              FreeMem(TempValue.BinaryValuePtr,TempValue.BinaryValueSize);
+                              TempValue.BinaryValuePtr := nil;
+                              raise;
                             end;
-            else
-              {ivtString}
-              StringValue := Binary_0000_ReadString;
-            end;
+                          end;
+            ivtString:    TempValue.StringValue := Binary_0000_ReadString;
+          else
+            {ivtUndecided}
+            KeyNode.ValueStr := Binary_0000_ReadString;
+          end;
+          // assign values to key
+          case ValueType of
+            ivtBool:      KeyNode.SetValueBool(TempValue.BoolValue);
+            ivtInt8:      KeyNode.SetValueInt8(TempValue.UInt8Value);
+            ivtUInt8:     KeyNode.SetValueUInt8(TempValue.UInt8Value);
+            ivtInt16:     KeyNode.SetValueInt16(TempValue.Int16Value);
+            ivtUInt16:    KeyNode.SetValueUInt16(TempValue.UInt16Value);
+            ivtInt32:     KeyNode.SetValueInt32(TempValue.Int32Value);
+            ivtUInt32:    KeyNode.SetValueUInt32(TempValue.UInt32Value);
+            ivtInt64:     KeyNode.SetValueInt64(TempValue.Int64Value);
+            ivtUInt64:    KeyNode.SetValueUInt64(TempValue.UInt64Value);
+            ivtFloat32:   KeyNode.SetValueFloat32(TempValue.Float32Value);
+            ivtFloat64:   KeyNode.SetValueFloat64(TempValue.Float64Value);
+            ivtDate:      KeyNode.SetValueDate(TempValue.DateValue);
+            ivtTime:      KeyNode.SetValueTime(TempValue.TimeValue);
+            ivtDateTime:  KeyNode.SetValueDateTime(TempValue.DateTimeValue);
+            ivtBinary:    begin
+                            KeyNode.SetValueBinary(TempValue.BinaryValuePtr,TempValue.BinaryValueSize,False);
+                            KeyNode.ValueDataPtr^.BinaryValueOwned := True;
+                          end;
+            ivtString:    KeyNode.SetValueString(TempValue.StringValue);
+          else
+            {ivtUndecided}
+            // do nothing, already assigned to key
+          end;
         end
       else raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Wrong key signature.');
     end
@@ -885,8 +897,8 @@ fFileNode.Comment := '';
 // prepare stringlist for parsing of lines
 fIniStrings := TUTF8StringList.Create;
 try
-  fFileComment := '';
-  SetLength(fCommentStack,0);
+  fLastComment := '';
+  fFileCommentSet := False;
   fIniStrings.LoadFromStream(Stream);
   If fIniStrings.Count > 0 then
     begin
@@ -895,14 +907,13 @@ try
         fIniStrings[i] := IFXTrimStr(fIniStrings[i]);
       // traverse and parse lines  
       fIniStrings.UserData := 0;
-      fLastTextLineType := tltInit;
+      fLastTextLineType := tltEmpty;
       fCurrentSectionNode := nil;
       while fIniStrings.UserData < fIniStrings.Count do
         begin
           Text_ReadLine;
           fIniStrings.UserData := fIniStrings.UserData + 1;
         end;
-      fFileNode.Comment := fFileComment;  
     end;
 finally
   FreeAndNil(fIniStrings);

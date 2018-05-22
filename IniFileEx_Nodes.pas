@@ -248,6 +248,7 @@ procedure TIFXKeyNode.SetValueStr(const Value: TIFXString);
 begin
 fValueStr := Value;
 fValueState := ivsNeedsDecode;
+fValueData.ValueType := ivtUndecided;
 end;
 
 //------------------------------------------------------------------------------
@@ -311,6 +312,7 @@ end;
 procedure TIFXKeyNode.EncodeValue;
 begin
 case fValueData.ValueType of
+  ivtUndecided: Exit;
   ivtBool:      EncodeBool;
   ivtInt8:      EncodeInt8;
   ivtUInt8:     EncodeUInt8;
@@ -561,6 +563,7 @@ end;
 procedure TIFXKeyNode.DecodeValue;
 begin
 case fValueData.ValueType of
+  ivtUndecided: Exit;
   ivtBool:      DecodeBool;
   ivtInt8:      DecodeInt8;
   ivtUInt8:     DecodeUInt8;
@@ -1091,7 +1094,7 @@ fComment := '';
 fValueStr := '';
 fValueEncoding := iveDefault;
 fValueState := ivsUndefined;
-fValueData.ValueType := ivtString;
+fValueData.ValueType := ivtUndecided;
 end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
