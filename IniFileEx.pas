@@ -46,8 +46,12 @@ type
     procedure SaveToBinaryFile(const FileName: String); virtual;
     procedure SaveToFile(const FileName: String); virtual;
 
+    procedure LoadFromTextualStream(Stream: TStream); virtual;
     procedure LoadFromBinaryStream(Stream: TStream); virtual;
+    procedure LoadFromStream(Stream: TStream); virtual;
+    procedure LoadFromTextualFile(const FileName: String); virtual;
     procedure LoadFromBinaryFile(const FileName: String); virtual;
+    procedure LoadFromFile(const FileName: String); virtual;
     // structure access
     Function IndexOfSection(const Section: TIFXString): Integer; virtual;
     Function IndexOfKey(const Section, Key: TIFXString): TIFXNodeIndices; overload; virtual;
@@ -386,9 +390,31 @@ begin
 SaveToTextualFile(FileName);
 end;
 
+procedure TIniFileEx.LoadFromTextualStream(Stream: TStream);
+begin
+fParser.ReadTextual(Stream);
+end;
+
 procedure TIniFileEx.LoadFromBinaryStream(Stream: TStream);
 begin
 fParser.ReadBinary(Stream);
+end;
+
+procedure TIniFileEx.LoadFromStream(Stream: TStream);
+begin
+LoadFromTextualStream(Stream);
+end;
+
+procedure TIniFileEx.LoadFromTextualFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  LoadFromTextualStream(FileStream);
+finally
+  FileStream.Free;
+end;
 end;
 
 procedure TIniFileEx.LoadFromBinaryFile(const FileName: String);
@@ -401,6 +427,11 @@ try
 finally
   FileStream.Free;
 end;
+end;
+
+procedure TIniFileEx.LoadFromFile(const FileName: String);
+begin
+LoadFromTextualFile(FileName);
 end;
 
 //------------------------------------------------------------------------------

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes,
-  AuxTypes,
+  AuxTypes, ExplicitStringLists,
   IniFileEx_Common, IniFileEx_Nodes;
 
 type
@@ -17,19 +17,22 @@ type
     DataSize:   UInt64;
   end;
 
+  TIFXTextParsingState = (tpsEmpty,tpsComment,tpsSection,tpsKey); 
+
 type
   TIFXParser = class(TObject)
   private
-    fSettingsPtr:   PIFXSettings;
-    fFileNode:      TIFXFileNode;
-    fStream:        TStream;
-    // processing fields
-    // textual
-    fEmptyLinePos:  Int64;
-    fIniString:     UTF8String;
-    fIniStringPos:  TStrSize;
-    // binary
-    fBinFileHeader: TIFXBiniFileHeader;
+    fSettingsPtr:       PIFXSettings;
+    fFileNode:          TIFXFileNode;
+    fStream:            TStream;
+    // for textual processing...
+    fEmptyLinePos:      Int64;
+    fIniStrings:        TUTF8StringList;
+    fCommentStack:      array of UTF8String;
+    fTextParsingState:  TIFXTextParsingState;
+    //fCurrentSection:    TIFXSectionNode;
+    // for binary processing...
+    fBinFileHeader:     TIFXBiniFileHeader;
   protected
     // writing textual ini
     Function Text_WriteEmptyLine: TMemSize; virtual;
@@ -37,7 +40,7 @@ type
     Function Text_WriteSection(SectionNode: TIFXSectionNode): TMemSize; virtual;
     Function Text_WriteKey(KeyNode: TIFXKeyNode): TMemSize; virtual;
     // reading textual ini
-    // Text_ReadInitial
+
     // writing binary ini of structure 0x0000
     Function Binary_0000_WriteString(const Str: TIFXString): TMemSize; virtual;
     Function Binary_0000_WriteSection(SectionNode: TIFXSectionNode): TMemSize; virtual;
@@ -45,8 +48,8 @@ type
     // reading binary ini of structure 0x0000
     Function Binary_0000_ReadString: TIFXString; virtual;
     procedure Binary_0000_ReadData; virtual;
-    Function Binary_0000_ReadSection: TIFXSectionNode; virtual;
-    Function Binary_0000_ReadKey: TIFXKeyNode; virtual;
+    Function Binary_0000_ReadSection(out SectionNode: TIFXSectionNode): Boolean; virtual;
+    Function Binary_0000_ReadKey(SectionNode: TIFXSectionNode; out KeyNode: TIFXKeyNode): Boolean; virtual;
   public
     constructor Create(SettingsPtr: PIFXSettings; FileNode: TIFXFileNode);
     // auxiliary methods
@@ -251,35 +254,96 @@ end;
 
 procedure TIFXParser.Binary_0000_ReadData;
 var
-  i:  Integer;
+  i:            Integer;
+  SectionNode:  TIFXSectionNode;
 begin
 fFileNode.Comment := Binary_0000_ReadString;
 If (fStream.Size - fStream.Position) >= SizeOf(UInt32) then
   begin
     For i := 0 to Pred(Integer(Stream_ReadUInt32(fStream))) do
-      fFileNode.AddSectionNode(Binary_0000_ReadSection);
+      If Binary_0000_ReadSection(SectionNode) then
+        fFileNode.AddSectionNode(SectionNode);
   end
 else raise Exception.Create('TIFXParser.Binary_0000_ReadData: Not enough data for section count.');
 end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXParser.Binary_0000_ReadSection: TIFXSectionNode;
+Function TIFXParser.Binary_0000_ReadSection(out SectionNode: TIFXSectionNode): Boolean;
 var
-  i:  Integer;
+  SectName: TIFXString;
+  i,Cntr:   Integer;
+  KeyNode:  TIFXKeyNode;
 begin
-Result := TIFXSectionNode.Create(fFileNode.SettingsPtr);
+Result := True;
+SectionNode := TIFXSectionNode.Create(fFileNode.SettingsPtr);
 try
   If (fStream.Size - fStream.Position) >= (SizeOf(UInt32) * 4) then
     begin
       If Stream_ReadUInt32(fStream) = IFX_BINI_SIGNATURE_SECTION then
         begin
-          Result.NameStr := Binary_0000_ReadString;
-          Result.Comment := Binary_0000_ReadString;
+          SectName := Binary_0000_ReadString;
+          i := fFileNode.IndexOfSection(SectName);
+          If i >= 0 then
+            // section with the same name is already present, decide what to
+            // do next according to duplicity behavior
+            case fSettingsPtr^.DuplicityBehavior of
+              idbReplace:
+                begin
+                  // discard created node, use the one present, replace comment
+                  SectionNode.Free;
+                  SectionNode := fFileNode[i];
+                  SectionNode.Comment := Binary_0000_ReadString;
+                  Result := False;
+                end;
+              idbRenameOld:
+                begin
+                  // use the new node, rename the old one
+                  SectionNode.NameStr := SectName;
+                  SectionNode.Comment := Binary_0000_ReadString;
+                  If fFileNode.IndexOfSection(SectName + fSettingsPtr^.DuplicityRenameOldStr) >= 0 then
+                    begin
+                      Cntr := 0;
+                      while fFileNode.IndexOfSection(SectName + fSettingsPtr^.DuplicityRenameOldStr +
+                        StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
+                      fFileNode[i].NameStr := SectName + fSettingsPtr^.DuplicityRenameOldStr +
+                        StrToIFXStr(IntToStr(Cntr));
+                    end
+                  else fFileNode[i].NameStr := SectName + fSettingsPtr^.DuplicityRenameOldStr;
+                end;
+              idbRenameNew:
+                begin
+                  // rename the new node, don't touch the old one
+                  If fFileNode.IndexOfSection(SectName + fSettingsPtr^.DuplicityRenameNewStr) >= 0 then
+                    begin
+                      Cntr := 0;
+                      while fFileNode.IndexOfSection(SectName + fSettingsPtr^.DuplicityRenameNewStr +
+                        StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
+                      SectionNode.NameStr := SectName + fSettingsPtr^.DuplicityRenameNewStr +
+                        StrToIFXStr(IntToStr(Cntr));
+                    end
+                  else SectionNode.NameStr := SectName + fSettingsPtr^.DuplicityRenameNewStr;
+                  SectionNode.Comment := Binary_0000_ReadString;
+                end;
+            else
+              {idbDrop}
+              // discard created node, use the one already present, discard comment
+              SectionNode.Free;
+              SectionNode := fFileNode[i];
+              Binary_0000_ReadString;
+              Result := False;
+            end
+          else
+            begin
+              // section is not yet in the file
+              SectionNode.NameStr := SectName;
+              SectionNode.Comment := Binary_0000_ReadString;
+            end;
           If (fStream.Size - fStream.Position) >= SizeOf(UInt32) then
             begin
               For i := 0 to Pred(Integer(Stream_ReadUInt32(fStream))) do
-                Result.AddKeyNode(Binary_0000_ReadKey);
+                If Binary_0000_ReadKey(SectionNode,KeyNode) then
+                  SectionNode.AddKeyNode(KeyNode);
             end
           else raise Exception.Create('TIFXParser.Binary_0000_ReadSection: Not enough data for key count.');
         end
@@ -287,16 +351,20 @@ try
     end
   else raise Exception.Create('TIFXParser.Binary_0000_ReadSection: Not enough data for section.');
 except
-  FreeAndNil(Result);
+  FreeAndNil(SectionNode);
   raise;
 end;
 end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXParser.Binary_0000_ReadKey: TIFXKeyNode;
+Function TIFXParser.Binary_0000_ReadKey(SectionNode: TIFXSectionNode; out KeyNode: TIFXKeyNode): Boolean;
 var
+  KeyName:  TIFXString;
   BinSize:  UInt64;
+  Index:    Integer;
+  Cntr:     Integer;
+  FreeNode: Boolean;
 
   procedure ValReadCheckAndRaise(Val,Exp: TMemSize);
   begin
@@ -305,19 +373,73 @@ var
   end;
 
 begin
-Result := TIFXKeyNode.Create(fFileNode.SettingsPtr);
+FreeNode := False;
+Result := True;
+KeyNode := TIFXKeyNode.Create(fFileNode.SettingsPtr);
 try
   If (fStream.Size - fStream.Position) >= ((SizeOf(UInt32) * 3) + 2{value enc. and type}) then
     begin
       If Stream_ReadUInt32(fStream) = IFX_BINI_SIGNATURE_KEY then
         begin
-          Result.NameStr := Binary_0000_ReadString;
-          Result.Comment := Binary_0000_ReadString;
-          Result.ValueEncoding := IFXByteToValueEncoding(Stream_ReadUInt8(fStream)); 
-          Result.ValueType := IFXByteToValueType(Stream_ReadUInt8(fStream));
+          KeyName := Binary_0000_ReadString;
+          Index := SectionNode.IndexOfKey(KeyName);
+          If Index >= 0 then
+            // key with the same name is already present, decide what to do next
+            // according to duplicity behavior
+            case fSettingsPtr^.DuplicityBehavior of
+              idbReplace:
+                begin
+                  // discard created node, use the one present, replace content
+                  KeyNode.Free;
+                  KeyNode := SectionNode[Index];
+                  KeyNode.NameStr := KeyName;
+                  Result := False;
+                end;
+              idbRenameOld:
+                begin
+                  // use the new node, rename the old one
+                  KeyNode.NameStr := KeyName;
+                  If SectionNode.IndexOfKey(KeyName + fSettingsPtr^.DuplicityRenameOldStr) >= 0 then
+                    begin
+                      Cntr := 0;
+                      while SectionNode.IndexOfKey(KeyName + fSettingsPtr^.DuplicityRenameOldStr +
+                        StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
+                      SectionNode[Index].NameStr := KeyName + fSettingsPtr^.DuplicityRenameOldStr +
+                        StrToIFXStr(IntToStr(Cntr));
+                    end
+                  else SectionNode[Index].NameStr := KeyName + fSettingsPtr^.DuplicityRenameOldStr;
+                end;
+              idbRenameNew:
+                begin
+                  // rename the new node, don't touch the old one
+                  If SectionNode.IndexOfKey(KeyName + fSettingsPtr^.DuplicityRenameNewStr) >= 0 then
+                    begin
+                      Cntr := 0;
+                      while SectionNode.IndexOfKey(KeyName + fSettingsPtr^.DuplicityRenameNewStr +
+                        StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
+                      KeyNode.NameStr := KeyName + fSettingsPtr^.DuplicityRenameNewStr +
+                        StrToIFXStr(IntToStr(Cntr));
+                    end
+                  else KeyNode.NameStr := KeyName + fSettingsPtr^.DuplicityRenameNewStr;
+                end;
+            else
+              {idbDrop}
+              // discard created node (will be freed at the end of this funtion
+              // since the actual reading must be performed)
+              Result := False;
+              FreeNode := True;
+            end
+          else
+            begin
+              // key is not yet in the section
+              KeyNode.NameStr := KeyName;
+            end;
+          KeyNode.Comment := Binary_0000_ReadString;
+          KeyNode.ValueEncoding := IFXByteToValueEncoding(Stream_ReadUInt8(fStream));
+          KeyNode.ValueType := IFXByteToValueType(Stream_ReadUInt8(fStream));
           // read value data
-          with Result.ValueDataPtr^ do
-            case Result.ValueType of
+          with KeyNode.ValueDataPtr^ do
+            case KeyNode.ValueType of
               ivtBool:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,BoolValue,SizeOf(Boolean)),SizeOf(Boolean));
               ivtInt8:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,Int8Value,SizeOf(Int8)),SizeOf(Int8));
               ivtUInt8:     ValReadCheckAndRaise(Stream_ReadBuffer(fStream,UInt8Value,SizeOf(UInt8)),SizeOf(UInt8));
@@ -351,15 +473,15 @@ try
               {ivtString}
               StringValue := Binary_0000_ReadString;
             end;
-
         end
       else raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Wrong key signature.');
     end
   else raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Not enough data for key.');
 except
-  FreeAndNil(Result);
+  FreeAndNil(KeyNode);
   raise;
 end;
+If FreeNode then FreeAndNil(KeyNode); 
 end;
 
 //==============================================================================
@@ -502,30 +624,52 @@ end;
 
 procedure TIFXParser.ReadTextual(Stream: TStream);
 var
-  BOM_Buffer: array[0..2] of Byte;
+  i:  Integer;
+
+  Function RemoveLeadingWhiteSpaces(const Str: UTF8String): UTF8String;
+  var
+    ii,Cnt: TStrSize;
+  begin
+    If Length(Str) > 0 then
+      begin
+        Cnt := 0;
+        For ii := 1 to Length(Str) do
+          If Ord(Str[ii]) in [0..32] then Inc(Cnt)
+            else Break{For ii};
+        If Cnt > 0 then
+          begin
+            SetLength(Result,Length(Str) - Cnt);
+            Move(Str[Cnt + 1],Result[1],(Length(Str) - Cnt) * SizeOf(UTF8Char));
+          end
+        else Result := Str;
+      end
+    else Result := '';
+  end;
+
 begin
-fStream := Stream;
 // clear file node
 fFileNode.ClearSections;
 fFileNode.Comment := '';
-If (fStream.Size - fStream.Position) >= 1 then
-  begin
-    // read first 3 bytes and if they contain BOM, ignore them
-    If (fStream.Size - fStream.Position) >= 3 then
-      begin
-        Stream_ReadBuffer(fStream,BOM_Buffer,SizeOf(BOM_Buffer));
-        If (BOM_Buffer[0] <> IFX_UTF8BOM[0]) or (BOM_Buffer[1] <> IFX_UTF8BOM[1]) or
-          (BOM_Buffer[2] <> IFX_UTF8BOM[2]) then
-          fStream.Seek(-3,soCurrent);
-      end;
-    SetLength(fIniString,fStream.Size - fStream.Position);
-    If Length(fIniString) > 0 then
-      begin
-        fIniStringPos := 1;
-
-
-      end;
-  end;
+// prepare stringlist for parsing of lines
+fIniStrings := TUTF8StringList.Create;
+try
+  SetLength(fCommentStack,0);
+  fIniStrings.LoadFromStream(Stream);
+  If fIniStrings.Count > 0 then
+    begin
+      // remove any leading whitespaces
+      For i := fIniStrings.LowIndex to fIniStrings.HighIndex do
+        fIniStrings[i] := RemoveLeadingWhiteSpaces(fIniStrings[i]);
+      fTextParsingState := tpsEmpty;
+      fIniStrings.UserData := 0;
+      while fIniStrings.UserData < fIniStrings.Count do
+        begin
+          fIniStrings.UserData := fIniStrings.UserData + 1;
+        end;
+    end;
+finally
+  FreeAndNil(fIniStrings);
+end;
 end;
 
 //------------------------------------------------------------------------------
