@@ -140,6 +140,9 @@ type
 
 Function IFXNodeIndicesValid(Indices: TIFXNodeIndices): Boolean;
 
+Function IFXTrimStr(const Str: TIFXString; WhiteSpaceChar: TIFXChar): TIFXString; overload;
+Function IFXTrimStr(const Str: TIFXString): TIFXString; overload;
+
 const
   IFX_INVALID_NODE_INDICES: TIFXNodeIndices = (SectionIndex: -1; KeyIndex: -1);
 
@@ -411,6 +414,45 @@ end;
 Function IFXNodeIndicesValid(Indices: TIFXNodeIndices): Boolean;
 begin
 Result := (Indices.SectionIndex >= 0) and (Indices.KeyIndex >= 0);
+end;
+
+//------------------------------------------------------------------------------
+
+Function IFXTrimStr(const Str: TIFXString; WhiteSpaceChar: TIFXChar): TIFXString;
+var
+  StartIdx,EndIdx:  TStrSize;
+  i:                TStrSize;
+begin
+If Length(Str) > 0 then
+  begin
+    StartIdx := -1;
+    For i := 1 to Length(Str) do
+      If (Ord(Str[i]) > 32) and (Str[i] <> WhiteSpaceChar) then
+        begin
+          StartIdx := i;
+          Break{for i};
+        end;
+    If StartIdx > 0 then
+      begin
+        EndIdx := Length(Str);
+        For i := Length(Str) downto 1 do
+          If (Ord(Str[i]) > 32) and (Str[i] <> WhiteSpaceChar) then
+            begin
+              EndIdx := i;
+              Break{for i};
+            end;
+        Result := Copy(Str,StartIdx,EndIdx - StartIdx + 1);
+      end
+    else Result := '';
+  end
+else Result := '';
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+Function IFXTrimStr(const Str: TIFXString): TIFXString;
+begin
+Result := IFXTrimStr(Str,TIFXChar(0));
 end;
 
 end.

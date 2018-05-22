@@ -17,22 +17,23 @@ type
     DataSize:   UInt64;
   end;
 
-  TIFXTextParsingState = (tpsEmpty,tpsComment,tpsSection,tpsKey); 
+  TIFXTextLineType = (tltInit,tltEmpty,tltComment,tltSection,tltKey);
 
 type
   TIFXParser = class(TObject)
   private
-    fSettingsPtr:       PIFXSettings;
-    fFileNode:          TIFXFileNode;
-    fStream:            TStream;
+    fSettingsPtr:         PIFXSettings;
+    fFileNode:            TIFXFileNode;
+    fStream:              TStream;
     // for textual processing...
-    fEmptyLinePos:      Int64;
-    fIniStrings:        TUTF8StringList;
-    fCommentStack:      array of UTF8String;
-    fTextParsingState:  TIFXTextParsingState;
-    //fCurrentSection:    TIFXSectionNode;
+    fEmptyLinePos:        Int64;
+    fIniStrings:          TUTF8StringList;
+    fFileComment:         TIFXString;
+    fCommentStack:        array of TIFXString;
+    fLastTextLineType:    TIFXTextLineType;
+    fCurrentSectionNode:  TIFXSectionNode;
     // for binary processing...
-    fBinFileHeader:     TIFXBiniFileHeader;
+    fBinFileHeader:       TIFXBiniFileHeader;
   protected
     // writing textual ini
     Function Text_WriteEmptyLine: TMemSize; virtual;
@@ -40,7 +41,14 @@ type
     Function Text_WriteSection(SectionNode: TIFXSectionNode): TMemSize; virtual;
     Function Text_WriteKey(KeyNode: TIFXKeyNode): TMemSize; virtual;
     // reading textual ini
-
+    procedure Text_PushComment(const Comment: TIFXString); virtual;
+    procedure Text_AppendComment(const Comment: TIFXString); virtual;
+    Function Text_PeekComment: TIFXString; virtual;
+    Function Text_PopComment: TIFXString; virtual;
+    procedure Text_ReadLine; virtual;
+    procedure Text_ReadCommentLine; virtual;
+    procedure Text_ReadSectionLine; virtual;
+    procedure Text_ReadKeyLine; virtual;
     // writing binary ini of structure 0x0000
     Function Binary_0000_WriteString(const Str: TIFXString): TMemSize; virtual;
     Function Binary_0000_WriteSection(SectionNode: TIFXSectionNode): TMemSize; virtual;
@@ -167,6 +175,251 @@ Function TIFXParser.Text_WriteKey(KeyNode: TIFXKeyNode): TMemSize;
 begin
 Result := Text_WriteString(ConstructCommentBlock(KeyNode.Comment));
 Inc(Result,Text_WriteString(ConstructKeyValueLine(KeyNode)));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIFXParser.Text_PushComment(const Comment: TIFXString);
+begin
+If fLastTextLineType <> tltInit then
+  begin
+    SetLength(fCommentStack,Length(fCommentStack) + 1);
+    fCommentStack[High(fCommentStack)] := Comment;
+  end
+else fFileComment := Comment;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIFXParser.Text_AppendComment(const Comment: TIFXString);
+begin
+If Length(fCommentStack) > 0 then
+  fCommentStack[High(fCommentStack)] := fCommentStack[High(fCommentStack)] +
+    fSettingsPtr.IniFormat.LineBreak + Comment
+else
+  fFileComment := fFileComment + fSettingsPtr^.IniFormat.LineBreak + Comment;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIFXParser.Text_PeekComment: TIFXString;
+begin
+If Length(fCommentStack) > 0 then
+  Result := fCommentStack[High(fCommentStack)]
+else
+  Result := '';
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIFXParser.Text_PopComment: TIFXString;
+begin
+If Length(fCommentStack) > 0 then
+  begin
+    Result := fCommentStack[High(fCommentStack)];
+    SetLength(fCommentStack,Length(fCommentStack) - 1);
+  end
+else Result := '';
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIFXParser.Text_ReadLine;
+var
+  FirstLineChar:  TIFXChar;
+begin
+// select how to parse the line according to first character
+If Length(fIniStrings[fIniStrings.UserData]) > 0 then
+  begin
+    // there should be no need for conversion, so just typecast
+    FirstLineChar := TIFXChar(fIniStrings[fIniStrings.UserData][1]);
+    If FirstLineChar = fSettingsPtr^.IniFormat.CommentChar then
+      Text_ReadCommentLine
+    else If FirstLineChar = fSettingsPtr^.IniFormat.SectionStartChar then
+      Text_ReadSectionLine
+    else
+      // invalid lines will fall to key parser
+      Text_ReadKeyLine;
+  end
+else fLastTextLineType := tltEmpty;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIFXParser.Text_ReadCommentLine;
+begin
+If fLastTextLineType <> tltComment then
+  Text_PushComment(UTF8ToIFXStr(Copy(fIniStrings[fIniStrings.UserData],2,
+    Length(fIniStrings[fIniStrings.UserData]) - 1)))
+else
+  Text_AppendComment(UTF8ToIFXStr(Copy(fIniStrings[fIniStrings.UserData],2,
+    Length(fIniStrings[fIniStrings.UserData]) - 1)));
+fLastTextLineType := tltComment;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIFXParser.Text_ReadSectionLine;
+var
+  TempStr:  TIFXString;
+  i,p:      TStrSize;
+  Cntr:     Integer;
+begin
+TempStr := UTF8ToIFXStr(fIniStrings[fIniStrings.UserData]);
+// find closing character; if not present, discard line
+p := -1;
+For i := 1 to Length(TempStr) do
+  If TempStr[i] = fSettingsPtr^.IniFormat.SectionEndChar then
+    begin
+      p := i;
+      Break{For i};
+    end;
+If p > 0 then
+  begin
+    // extract section name from the line
+    TempStr := Copy(TempStr,2,p - 2);
+    i := fFileNode.IndexOfSection(TempStr);
+    If i >= 0 then
+      // section of this name is already present
+      case fSettingsPtr^.DuplicityBehavior of
+        idbReplace:
+          begin
+            fCurrentSectionNode := fFileNode[i];
+            fCurrentSectionNode.Comment := Text_PopComment;
+          end;
+        idbRenameOld:
+          begin
+            If fFileNode.IndexOfSection(TempStr + fSettingsPtr^.DuplicityRenameOldStr) >= 0 then
+              begin
+                Cntr := 0;
+                while fFileNode.IndexOfSection(TempStr + fSettingsPtr^.DuplicityRenameOldStr +
+                  StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
+                fFileNode[i].NameStr := TempStr + fSettingsPtr^.DuplicityRenameOldStr +
+                  StrToIFXStr(IntToStr(Cntr));
+              end
+            else fFileNode[i].NameStr := TempStr + fSettingsPtr^.DuplicityRenameOldStr;
+            fCurrentSectionNode := TIFXSectionNode.Create(TempStr,fFileNode.SettingsPtr);
+            fCurrentSectionNode.Comment := Text_PopComment;
+            fFileNode.AddSectionNode(fCurrentSectionNode);
+          end;
+        idbRenameNew:
+          begin
+            If fFileNode.IndexOfSection(TempStr + fSettingsPtr^.DuplicityRenameNewStr) >= 0 then
+              begin
+                Cntr := 0;
+                while fFileNode.IndexOfSection(TempStr + fSettingsPtr^.DuplicityRenameNewStr +
+                  StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
+                TempStr := TempStr + fSettingsPtr^.DuplicityRenameNewStr + StrToIFXStr(IntToStr(Cntr));
+              end
+            else TempStr := TempStr + fSettingsPtr^.DuplicityRenameNewStr;
+            fCurrentSectionNode := TIFXSectionNode.Create(TempStr,fFileNode.SettingsPtr);
+            fCurrentSectionNode.Comment := Text_PopComment;
+            fFileNode.AddSectionNode(fCurrentSectionNode);
+          end;
+      else
+        {idbDrop}
+        fCurrentSectionNode := fFileNode[i];
+        Text_PopComment;
+      end
+    else
+      begin
+        // section of this name does not yet exist, create node and add it
+        fCurrentSectionNode := TIFXSectionNode.Create(TempStr,fFileNode.SettingsPtr);
+        fCurrentSectionNode.Comment := Text_PopComment;
+        fFileNode.AddSectionNode(fCurrentSectionNode);
+      end;
+    fLastTextLineType := tltSection;  
+  end
+else fLastTextLineType := tltEmpty;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIFXParser.Text_ReadKeyLine;
+var
+  TempStr:  TIFXString;
+  i,p:      TSTrSize;
+  KeyName:  TIFXString;
+  KeyCmnt:  TIFXString;
+  KeyNode:  TIFXKeyNode;
+  Cntr:     Integer;
+begin
+TempStr := UTF8ToIFXStr(fIniStrings[fIniStrings.UserData]);
+// get position of value delimiter
+p := -1;
+For i := 1 to Length(TempStr) do
+  If TempStr[i] = fSettingsPtr^.IniFormat.ValueDelimChar then
+    begin
+      p := i;
+      Break{For i};
+    end;
+If p > 0 then
+  begin
+    // everything in front of delimiter is key, everything behind is value
+    KeyName := IFXTrimStr(Copy(TempStr,1,p - 1),fSettingsPtr^.IniFormat.WhiteSpaceChar);
+    TempStr := IFXTrimStr(Copy(TempStr,p + 1,Length(TempStr) - p),fSettingsPtr^.IniFormat.WhiteSpaceChar);
+    KeyCmnt := Text_PopComment;
+    If not Assigned(fCurrentSectionNode) then
+      begin
+        // section-less key
+        fCurrentSectionNode := TIFXSectionNode.Create('',fFileNode.SettingsPtr);
+        fCurrentSectionNode.Comment := Text_PopComment;
+        fFileNode.AddSectionNode(fCurrentSectionNode);
+      end;
+    i := fCurrentSectionNode.IndexOfKey(KeyName);
+    If i >= 0 then
+      // key of this name is already present
+      case fSettingsPtr^.DuplicityBehavior of
+        idbReplace:
+          begin
+            fCurrentSectionNode[i].Comment := KeyCmnt;
+            fCurrentSectionNode[i].ValueStr := TempStr;
+          end;
+        idbRenameOld:
+          begin
+            If fCurrentSectionNode.IndexOfKey(KeyName + fSettingsPtr^.DuplicityRenameOldStr) >= 0 then
+              begin
+                Cntr := 0;
+                while fCurrentSectionNode.IndexOfKey(KeyName + fSettingsPtr^.DuplicityRenameOldStr +
+                  StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
+                fCurrentSectionNode[i].NameStr := KeyName + fSettingsPtr^.DuplicityRenameOldStr +
+                  StrToIFXStr(IntToStr(Cntr));
+              end
+            else fCurrentSectionNode[i].NameStr := KeyName + fSettingsPtr^.DuplicityRenameOldStr;
+            KeyNode := TIFXKeyNode.Create(KeyName,fCurrentSectionNode.SettingsPtr);
+            KeyNode.Comment := KeyCmnt;
+            KeyNode.ValueStr := TempStr;
+            fCurrentSectionNode.AddKeyNode(KeyNode);
+          end;
+        idbRenameNew:
+          begin
+            If fCurrentSectionNode.IndexOfKey(KeyName + fSettingsPtr^.DuplicityRenameNewStr) >= 0 then
+              begin
+                Cntr := 0;
+                while fCurrentSectionNode.IndexOfKey(KeyName + fSettingsPtr^.DuplicityRenameNewStr +
+                  StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
+                KeyName := KeyName + fSettingsPtr^.DuplicityRenameNewStr + StrToIFXStr(IntToStr(Cntr));
+              end
+            else KeyName := KeyName + fSettingsPtr^.DuplicityRenameNewStr;
+            KeyNode := TIFXKeyNode.Create(KeyName,fCurrentSectionNode.SettingsPtr);
+            KeyNode.Comment := KeyCmnt;
+            KeyNode.ValueStr := TempStr;
+            fCurrentSectionNode.AddKeyNode(KeyNode);
+          end;
+      else
+        {idbDrop}
+        // do nothing, discard everything
+      end
+    else
+      begin
+        KeyNode := TIFXKeyNode.Create(KeyName,fCurrentSectionNode.SettingsPtr);
+        KeyNode.Comment := KeyCmnt;
+        KeyNode.ValueStr := TempStr;
+        fCurrentSectionNode.AddKeyNode(KeyNode);
+      end;
+    fLastTextLineType := tltKey;  
+  end
+else fLastTextLineType := tltEmpty;
 end;
 
 //------------------------------------------------------------------------------
@@ -625,27 +878,6 @@ end;
 procedure TIFXParser.ReadTextual(Stream: TStream);
 var
   i:  Integer;
-
-  Function RemoveLeadingWhiteSpaces(const Str: UTF8String): UTF8String;
-  var
-    ii,Cnt: TStrSize;
-  begin
-    If Length(Str) > 0 then
-      begin
-        Cnt := 0;
-        For ii := 1 to Length(Str) do
-          If Ord(Str[ii]) in [0..32] then Inc(Cnt)
-            else Break{For ii};
-        If Cnt > 0 then
-          begin
-            SetLength(Result,Length(Str) - Cnt);
-            Move(Str[Cnt + 1],Result[1],(Length(Str) - Cnt) * SizeOf(UTF8Char));
-          end
-        else Result := Str;
-      end
-    else Result := '';
-  end;
-
 begin
 // clear file node
 fFileNode.ClearSections;
@@ -653,23 +885,29 @@ fFileNode.Comment := '';
 // prepare stringlist for parsing of lines
 fIniStrings := TUTF8StringList.Create;
 try
+  fFileComment := '';
   SetLength(fCommentStack,0);
   fIniStrings.LoadFromStream(Stream);
   If fIniStrings.Count > 0 then
     begin
       // remove any leading whitespaces
       For i := fIniStrings.LowIndex to fIniStrings.HighIndex do
-        fIniStrings[i] := RemoveLeadingWhiteSpaces(fIniStrings[i]);
-      fTextParsingState := tpsEmpty;
+        fIniStrings[i] := IFXTrimStr(fIniStrings[i]);
+      // traverse and parse lines  
       fIniStrings.UserData := 0;
+      fLastTextLineType := tltInit;
+      fCurrentSectionNode := nil;
       while fIniStrings.UserData < fIniStrings.Count do
         begin
+          Text_ReadLine;
           fIniStrings.UserData := fIniStrings.UserData + 1;
         end;
+      fFileNode.Comment := fFileComment;  
     end;
 finally
   FreeAndNil(fIniStrings);
 end;
+fCurrentSectionNode := nil;
 end;
 
 //------------------------------------------------------------------------------
