@@ -48,8 +48,8 @@ type
     Function WritingValue(const Section, Key: TIFXString): TIFXKeyNode; virtual;
   public
     constructor Create; overload;
-    //constructor Create(Stream: TStream); overload;
-    //constructor Create(const FileName: String); overload;
+    constructor Create(Stream: TStream); overload;
+    constructor Create(const FileName: String); overload;
     //constructor CreateCopy(Src: TIniFileEx); overload;
     destructor Destroy; override;
     // file/stream manipulation
@@ -67,12 +67,12 @@ type
     procedure LoadFromBinaryFile(const FileName: String); virtual;
     procedure LoadFromFile(const FileName: String); virtual;
 
-    //procedure AppendToTextualStream(Stream: TStream); virtual;
-    //procedure AppendToBinaryStream(Stream: TStream); virtual;
-    //procedure AppendToStream(Stream: TStream); virtual;
-    //procedure AppendToTextualFile(const FileName: String); virtual;
-    //procedure AppendToBinaryFile(const FileName: String); virtual;
-    //procedure AppendToFile(const FileName: String); virtual;    
+    procedure AppendToTextualStream(Stream: TStream); virtual;
+    procedure AppendToBinaryStream(Stream: TStream); virtual;
+    procedure AppendToStream(Stream: TStream); virtual;
+    procedure AppendToTextualFile(const FileName: String); virtual;
+    procedure AppendToBinaryFile(const FileName: String); virtual;
+    procedure AppendToFile(const FileName: String); virtual;
 
     procedure AppendFromTextualStream(Stream: TStream); virtual;
     procedure AppendFromBinaryStream(Stream: TStream); virtual;
@@ -81,8 +81,8 @@ type
     procedure AppendFromBinaryFile(const FileName: String); virtual;
     procedure AppendFromFile(const FileName: String); virtual;
 
-    //procedure Flush; virtual;
-    //procedure Update(Clear: Boolean = False); virtual;
+    procedure Flush; virtual;
+    procedure Update(Clear: Boolean = False); virtual;
 
     // assigning from object
     procedure Assign(Ini: TIniFileEx); virtual;
@@ -389,10 +389,33 @@ Initialize;
 fSettings.WorkingStyle := iwsStandalone;
 end;
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+constructor TIniFileEx.Create(Stream: TStream);
+begin
+inherited Create;
+Initialize;
+fSettings.WorkingStyle := iwsOnStream;
+fSettings.WorkingStream := Stream;
+LoadFromStream(Stream);
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+constructor TIniFileEx.Create(const FileName: String);
+begin
+inherited Create;
+Initialize;
+fSettings.WorkingStyle := iwsOnFile;
+fSettings.WorkingFile := FileName;
+LoadFromFile(FileName);
+end;
+
 //------------------------------------------------------------------------------
 
 destructor TIniFileEx.Destroy;
 begin
+Flush;
 Finalize;
 inherited;
 end;
@@ -496,6 +519,82 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TIniFileEx.AppendToTextualStream(Stream: TStream);
+var
+  ExtIniFile: TIniFileEx;
+begin
+ExtIniFile := TIniFileEx.Create;
+try
+  ExtIniFile.Settings := fSettings;
+  ExtIniFile.LoadFromTextualStream(Stream);
+  ExtIniFile.Append(Self);
+  ExtIniFile.SaveToTextualStream(Stream);
+finally
+  ExtIniFile.Free;
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendToBinaryStream(Stream: TStream);
+var
+  ExtIniFile: TIniFileEx;
+begin
+ExtIniFile := TIniFileEx.Create;
+try
+  ExtIniFile.Settings := fSettings;
+  ExtIniFile.LoadFromBinaryStream(Stream);
+  ExtIniFile.Append(Self);
+  ExtIniFile.SaveToBinaryStream(Stream);
+finally
+  ExtIniFile.Free;
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendToStream(Stream: TStream);
+begin
+AppendToTextualStream(Stream);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendToTextualFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  AppendToTextualStream(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendToBinaryFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  AppendToBinaryStream(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendToFile(const FileName: String);
+begin
+AppendToTextualFile(FileName);
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TIniFileEx.LoadFromBinaryFile(const FileName: String);
 var
   FileStream: TFileStream;
@@ -569,6 +668,54 @@ end;
 procedure TIniFileEx.AppendFromFile(const FileName: String);
 begin
 AppendFromTextualFile(FileName);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.Flush;
+var
+  OldDupBehavior: TIFXDuplicityBehavior;
+begin
+If fSettings.WorkingStyle <> iwsStandalone then
+  begin
+    OldDupBehavior := fSettings.DuplicityBehavior;
+    try
+      fSettings.DuplicityBehavior := idbReplace;
+      case fSettings.WorkingStyle of
+        iwsOnStream:  AppendToStream(fSettings.WorkingStream);
+        iwsOnFile:    AppendToFile(fSettings.WorkingFile);
+      end;
+    finally
+      fSettings.DuplicityBehavior := OldDupBehavior;
+    end;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.Update(Clear: Boolean = False);
+var
+  OldDupBehavior: TIFXDuplicityBehavior;
+begin
+If fSettings.WorkingStyle <> iwsStandalone then
+  begin
+    OldDupBehavior := fSettings.DuplicityBehavior;
+    try
+      fSettings.DuplicityBehavior := idbReplace;
+      If Clear then
+        case fSettings.WorkingStyle of
+          iwsOnStream:  LoadFromStream(fSettings.WorkingStream);
+          iwsOnFile:    LoadFromFile(fSettings.WorkingFile);
+        end
+      else
+        case fSettings.WorkingStyle of
+          iwsOnStream:  AppendFromStream(fSettings.WorkingStream);
+          iwsOnFile:    AppendFromFile(fSettings.WorkingFile);
+        end;
+    finally
+      fSettings.DuplicityBehavior := OldDupBehavior;
+    end;
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -1000,7 +1147,10 @@ end;
 procedure TIniFileEx.Clear;
 begin
 If not fSettings.ReadOnly then
-  fFileNode.ClearSections;
+  begin
+    fFileNode.ClearSections;
+    fFileNode.Comment := '';
+  end;
 end;
 
 //------------------------------------------------------------------------------
