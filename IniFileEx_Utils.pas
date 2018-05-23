@@ -87,6 +87,7 @@ procedure IFXInitSettings(var Sett: TIFXSettings);
 ===============================================================================}
 
 Function IFXNodeIndicesValid(Indices: TIFXNodeIndices): Boolean;
+Function IFXTrimUTF8(const Str: UTF8String): UTF8String;
 
 implementation
 
@@ -736,8 +737,11 @@ Sett.IniFormat.LineBreak        := StrToIFXStr(sLineBreak);
 Sett.FullNameEval          := True;
 Sett.ReadOnly              := False;
 Sett.DuplicityBehavior     := idbDrop;
-Sett.DuplicityRenameOldStr := StrToIFXStr('_old');
-Sett.DuplicityRenameNewStr := StrToIFXStr('_new');
+Sett.DuplicityRenameOldStr := TIFXString('_old');
+Sett.DuplicityRenameNewStr := TIFXString('_new');
+Sett.WorkingStyle          := iwsStandalone;
+Sett.WorkingStream         := nil;
+Sett.WorkingFile           := '';
 Sett.WriteByteOrderMask    := False;
 end;
 
@@ -748,6 +752,38 @@ end;
 Function IFXNodeIndicesValid(Indices: TIFXNodeIndices): Boolean;
 begin
 Result := (Indices.SectionIndex >= 0) and (Indices.KeyIndex >= 0);
-end; 
+end;
+
+//------------------------------------------------------------------------------
+
+Function IFXTrimUTF8(const Str: UTF8String): UTF8String;
+var
+  StartIdx,EndIdx:  TStrSize;
+  i:                TStrSize;
+begin
+If Length(Str) > 0 then
+  begin
+    StartIdx := -1;
+    For i := 1 to Length(Str) do
+      If Ord(Str[i]) > 32 then
+        begin
+          StartIdx := i;
+          Break{for i};
+        end;
+    If StartIdx > 0 then
+      begin
+        EndIdx := Length(Str);
+        For i := Length(Str) downto 1 do
+          If Ord(Str[i]) > 32 then
+            begin
+              EndIdx := i;
+              Break{for i};
+            end;
+        Result := Copy(Str,StartIdx,EndIdx - StartIdx + 1);
+      end
+    else Result := '';
+  end
+else Result := '';
+end;
  
 end.

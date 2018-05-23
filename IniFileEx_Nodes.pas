@@ -116,7 +116,7 @@ type
     Function GetValueDateTime(out Value: TDateTime): Boolean; virtual;
     Function GetValueString(out Value: TIFXString): Boolean; virtual;
     Function GetValueBinary(out Value: Pointer; out Size: TMemSize; MakeCopy: Boolean = False): Boolean; virtual;
-    property SettingsPtr: PIFXSettings read fSettingsPtr;
+    property SettingsPtr: PIFXSettings read fSettingsPtr write fSettingsPtr;
     property Name: TIFXHashedString read fName write fName;
     property NameStr: TIFXString read fName.Str write SetNameStr;
     property Comment: TIFXString read fComment write fComment;
@@ -155,7 +155,7 @@ type
   public
     constructor Create(const SectionName: TIFXString; SettingsPtr: PIFXSettings); overload;
     constructor Create(SettingsPtr: PIFXSettings); overload;
-    constructor CreateCopy(SourceNode: TIFXSectionNode); overload;
+    constructor CreateCopy(SourceNode: TIFXSectionNode; OnKeyCreate: TIFXKeyNodeEvent); overload;
     destructor Destroy; override;
     Function LowIndex: Integer; override;
     Function HighIndex: Integer; override;
@@ -171,7 +171,7 @@ type
     procedure SortKeys(Reversed: Boolean = False); virtual;
     property Keys[Index: Integer]: TIFXKeyNode read GetKey; default;
     property KeyCount: Integer read GetCount write SetCount;
-    property SettingsPtr: PIFXSettings read fSettingsPtr;
+    property SettingsPtr: PIFXSettings read fSettingsPtr write fSettingsPtr;
     property Name: TIFXHashedString read fName write fName;
     property NameStr: TIFXString read fName.Str write SetNameStr;
     property Comment: TIFXString read fComment write fComment;
@@ -206,7 +206,8 @@ type
     procedure KeyCreateHandler(Sender: TObject; Section: TIFXSectionNode; Key: TIFXKeyNode); virtual;
     procedure KeyDestroyHandler(Sender: TObject; Section: TIFXSectionNode; Key: TIFXKeyNode); virtual;
   public
-    constructor Create(SettingsPtr: PIFXSettings);
+    constructor Create(SettingsPtr: PIFXSettings); overload;
+    constructor CreateCopy(SourceNode: TIFXFileNode; OnSectionCreate: TIFXSectionNodeEvent; OnKeyCreate: TIFXKeyNodeEvent); overload;
     destructor Destroy; override;
     Function LowIndex: Integer; override;
     Function HighIndex: Integer; override;
@@ -231,7 +232,7 @@ type
     procedure SortKeys(const SectionName: TIFXString; Reversed: Boolean = False); virtual;
     property Sections[Index: Integer]: TIFXSectionNode read GetSection; default;
     property SectionCount: Integer read GetCount write SetCount;
-    property SettingsPtr: PIFXSettings read fSettingsPtr;
+    property SettingsPtr: PIFXSettings read fSettingsPtr write fSettingsPtr;
     property Comment: TIFXString read fComment write fComment;
     property OnKeyCreate: TIFXKeyNodeEvent read fOnKeyCreate write fOnKeyCreate;
     property OnKeyDestroy: TIFXKeyNodeEvent read fOnKeyDestroy write fOnKeyDestroy;
@@ -1534,22 +1535,22 @@ end;
 
 //------------------------------------------------------------------------------
 
-constructor TIFXSectionNode.CreateCopy(SourceNode: TIFXSectionNode);
+constructor TIFXSectionNode.CreateCopy(SourceNode: TIFXSectionNode; OnKeyCreate: TIFXKeyNodeEvent);
 var
   i:        Integer;
   TempKey:  TIFXKeyNode;
 begin
 Create(SourceNode.NameStr,SourceNode.fSettingsPtr);
-fComment := SourceNode.fComment;
-fOnKeyCreate := SourceNode.fOnKeyCreate;
-fOnKeyDestroy := SourceNode.fOnKeyDestroy;
+fComment := SourceNode.Comment;
+fOnKeyCreate := SourceNode.OnKeyCreate;
+fOnKeyDestroy := SourceNode.OnKeyDestroy;
 // copy all keys from source section
 For i := SourceNode.LowIndex to SourceNode.HighIndex do
   begin
     TempKey := TIFXKeyNode.CreateCopy(SourceNode[i]);
     AddKeyNode(TempKey);
-    If Assigned(fOnKeyCreate) then
-      fOnKeyCreate(Self,Self,TempKey);
+    If Assigned(OnKeyCreate) then
+      OnKeyCreate(Self,Self,TempKey);
   end;
 end;
 
@@ -1831,6 +1832,30 @@ fOnKeyCreate := nil;
 fOnKeyDestroy := nil;
 fOnSectionCreate := nil;
 fOnSectionDestroy := nil;
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+constructor TIFXFileNode.CreateCopy(SourceNode: TIFXFileNode; OnSectionCreate: TIFXSectionNodeEvent; OnKeyCreate: TIFXKeyNodeEvent);
+var
+  i:            Integer;
+  TempSection:  TIFXSectionNode;
+begin
+Create(SourceNode.SettingsPtr);
+fComment := SourceNode.Comment;
+fOnKeyCreate := SourceNode.OnKeyCreate;
+fOnKeyDestroy := SourceNode.OnKeyDestroy;
+fOnSectionCreate := SourceNode.OnSectionCreate;
+fOnSectionDestroy := SourceNode.OnSectionDestroy;
+For i := SourceNode.LowIndex to SourceNode.HighIndex do
+  begin
+    TempSection := TIFXSectionNode.CreateCopy(SourceNode[i],OnKeyCreate);
+    TempSection.OnKeyCreate := KeyCreateHandler;
+    TempSection.OnKeyDestroy := KeyDestroyHandler;
+    AddSectionNode(TempSection);
+    If Assigned(OnSectionCreate) then
+      OnSectionCreate(Self,TempSection);
+  end;
 end;
 
 //------------------------------------------------------------------------------

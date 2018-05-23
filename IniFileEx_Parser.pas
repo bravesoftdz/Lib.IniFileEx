@@ -22,7 +22,7 @@ type
     DataSize:   UInt64;
   end;
 
-  TIFXTextLineType = (tltEmpty,tltComment,tltSection,tltKey);
+  TIFXTextLineType = (itltEmpty,itltComment,itltSection,itltKey);
 
 const
   IFX_UTF8BOM: packed array[0..2] of Byte = ($EF,$BB,$BF);
@@ -65,6 +65,7 @@ type
     // reading textual ini
     procedure Text_AddToLastComment(const Comment: TIFXString); virtual;
     Function Text_ConsumeLastComment: TIFXString; virtual;
+    procedure Text_CreateEmptyNameSection; virtual;
     procedure Text_ReadLine; virtual;
     procedure Text_ReadCommentLine; virtual;
     procedure Text_ReadSectionLine; virtual;
@@ -149,7 +150,7 @@ var
 begin
 If fStream.Position <> fEmptyLinePos then
   begin
-    TempStr := IFXStrToUTF8(fSettingsPtr.IniFormat.LineBreak);
+    TempStr := IFXStrToUTF8(fSettingsPtr^.IniFormat.LineBreak);
     Result := TMemSize(Stream_WriteBuffer(fStream,PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)));
     fEmptyLinePos := fStream.Position;
   end
@@ -164,7 +165,7 @@ var
 begin
 If Length(Str) > 0 then
   begin
-    TempStr := IFXStrToUTF8(Str + fSettingsPtr.IniFormat.LineBreak);
+    TempStr := IFXStrToUTF8(Str + fSettingsPtr^.IniFormat.LineBreak);
     If Length(TempStr) > 0 then
       Result := TMemSize(Stream_WriteBuffer(fStream,PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)))
     else
@@ -213,6 +214,21 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TIFXParser.Text_CreateEmptyNameSection;
+var
+  Index:  Integer;
+begin
+Index := fFileNode.IndexOfSection('');
+If Index < 0 then
+  begin
+    fCurrentSectionNode := TIFXSectionNode.Create('',fFileNode.SettingsPtr);
+    fFileNode.AddSectionNode(fCurrentSectionNode);
+  end
+else fCurrentSectionNode := fFileNode[Index];
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TIFXParser.Text_ReadLine;
 var
   FirstLineChar:  TIFXChar;
@@ -230,14 +246,14 @@ If Length(fIniStrings[fIniStrings.UserData]) > 0 then
       // invalid lines will fall to key parser
       Text_ReadKeyLine;
   end
-else fLastTextLineType := tltEmpty;
+else fLastTextLineType := itltEmpty;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TIFXParser.Text_ReadCommentLine;
 begin
-If (fLastTextLineType <> tltComment) and (Length(fLastComment) > 0) then
+If (fLastTextLineType <> itltComment) and (Length(fLastComment) > 0) then
   begin
     If not fFileCommentSet then
       begin
@@ -248,16 +264,15 @@ If (fLastTextLineType <> tltComment) and (Length(fLastComment) > 0) then
       begin
         If not Assigned(fCurrentSectionNode) then
           begin
-            fCurrentSectionNode := TIFXSectionNode.Create('',fFileNode.SettingsPtr);
+            Text_CreateEmptyNameSection;
             fCurrentSectionNode.Comment := fLastComment;
-            fFileNode.AddSectionNode(fCurrentSectionNode);
           end;
       end;
     fLastComment := '';
   end;
 Text_AddToLastComment(UTF8ToIFXStr(Copy(fIniStrings[fIniStrings.UserData],2,
   Length(fIniStrings[fIniStrings.UserData]) - 1)));
-fLastTextLineType := tltComment;
+fLastTextLineType := itltComment;
 end;
 
 //------------------------------------------------------------------------------
@@ -331,9 +346,9 @@ If p > 0 then
         fCurrentSectionNode.Comment := Text_ConsumeLastComment;
         fFileNode.AddSectionNode(fCurrentSectionNode);
       end;
-    fLastTextLineType := tltSection;  
+    fLastTextLineType := itltSection;
   end
-else fLastTextLineType := tltEmpty;
+else fLastTextLineType := itltEmpty;
 end;
 
 //------------------------------------------------------------------------------
@@ -363,11 +378,7 @@ If p > 0 then
     TempStr := IFXTrimStr(Copy(TempStr,p + 1,Length(TempStr) - p),fSettingsPtr^.IniFormat.WhiteSpaceChar);
     KeyCmnt := Text_ConsumeLastComment;
     If not Assigned(fCurrentSectionNode) then
-      begin
-        // section-less key
-        fCurrentSectionNode := TIFXSectionNode.Create('',fFileNode.SettingsPtr);
-        fFileNode.AddSectionNode(fCurrentSectionNode);
-      end;
+      Text_CreateEmptyNameSection;
     i := fCurrentSectionNode.IndexOfKey(KeyName);
     If i >= 0 then
       // key of this name is already present
@@ -419,9 +430,9 @@ If p > 0 then
         KeyNode.ValueStr := TempStr;
         fCurrentSectionNode.AddKeyNode(KeyNode);
       end;
-    fLastTextLineType := tltKey;  
+    fLastTextLineType := itltKey;
   end
-else fLastTextLineType := tltEmpty;
+else fLastTextLineType := itltEmpty;
 end;
 
 //------------------------------------------------------------------------------
@@ -713,8 +724,10 @@ try
             ivtDateTime:  ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.DateTimeValue,SizeOf(TDateTime)),SizeOf(TDateTime));
             ivtBinary:    begin
                             ValReadCheckAndRaise(Stream_ReadUInt64(fStream,BinSize),SizeOf(UInt64));
+                          {$IFNDEF 64bit}
                             If BinSize > UInt64(High(TMemSize)) then
                               raise Exception.Create('TIFXParser.Binary_0000_ReadKey: Too much raw data.');
+                          {$ENDIF}
                             TempValue.BinaryValueSize := TMemSize(BinSize);
                             GetMem(TempValue.BinaryValuePtr,TempValue.BinaryValueSize);
                             try
@@ -809,7 +822,7 @@ If Length(CommentStr) > 0 then
     SetLength(Result,Temp);
     i := 1;
     Temp := 2;  // will be used to index result string
-    Result[1] := fSettingsPtr.IniFormat.CommentChar;
+    Result[1] := fSettingsPtr^.IniFormat.CommentChar;
     while i <= Length(CommentStr) do
       begin
         If Ord(CommentStr[i]) in [10,13] then
@@ -821,7 +834,7 @@ If Length(CommentStr) > 0 then
             For j := 0 to Pred(Length(fSettingsPtr^.IniFormat.LineBreak)) do
               Result[Temp + j] := fSettingsPtr^.IniFormat.LineBreak[j + 1];
             Inc(Temp,Length(fSettingsPtr^.IniFormat.LineBreak));
-            Result[Temp] := fSettingsPtr.IniFormat.CommentChar;
+            Result[Temp] := fSettingsPtr^.IniFormat.CommentChar;
           end
         else Result[Temp] := CommentStr[i];
         Inc(i);
@@ -835,8 +848,8 @@ end;
 Function TIFXParser.ConstructSectionName(SectionNode: TIFXSectionNode): TIFXString;
 begin
 SetLength(Result,Length(SectionNode.NameStr) + 2{section name start and end char});
-Result[1] := fSettingsPtr.IniFormat.SectionStartChar;
-Result[Length(Result)] := fSettingsPtr.IniFormat.SectionEndChar;
+Result[1] := fSettingsPtr^.IniFormat.SectionStartChar;
+Result[Length(Result)] := fSettingsPtr^.IniFormat.SectionEndChar;
 Move(PIFXChar(SectionNode.NameStr)^,Result[2],Length(SectionNode.NameStr) * SizeOf(TIFXChar));
 end;
 
@@ -881,7 +894,7 @@ var
 begin
 fStream := Stream;
 // write BOM if requested
-If fSettingsPtr.WriteByteOrderMask then
+If fSettingsPtr^.WriteByteOrderMask then
   Stream_WriteBuffer(fStream,IFX_UTF8BOM,SizeOf(IFX_UTF8BOM));
 fEmptyLinePos := fStream.Position;
 // write file comment
@@ -912,9 +925,6 @@ procedure TIFXParser.ReadTextual(Stream: TStream);
 var
   i:  Integer;
 begin
-// clear file node
-fFileNode.ClearSections;
-fFileNode.Comment := '';
 // prepare stringlist for parsing of lines
 fIniStrings := TUTF8StringList.Create;
 try
@@ -925,10 +935,10 @@ try
     begin
       // remove any leading whitespaces
       For i := fIniStrings.LowIndex to fIniStrings.HighIndex do
-        fIniStrings[i] := IFXTrimStr(fIniStrings[i]);
+        fIniStrings[i] := IFXTrimUTF8(fIniStrings[i]);
       // traverse and parse lines  
       fIniStrings.UserData := 0;
-      fLastTextLineType := tltEmpty;
+      fLastTextLineType := itltEmpty;
       fCurrentSectionNode := nil;
       while fIniStrings.UserData < fIniStrings.Count do
         begin
@@ -983,9 +993,6 @@ end;
 
 procedure TIFXParser.ReadBinary(Stream: TStream);
 begin
-// clear file node
-fFileNode.ClearSections;
-fFileNode.Comment := '';
 If (Stream.Size - Stream.Position) >= SizeOf(TIFXBiniFileHeader) then
   begin
     Stream_ReadBuffer(Stream,fBinFileHeader,SizeOf(TIFXBiniFileHeader));

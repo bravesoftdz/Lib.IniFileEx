@@ -5,7 +5,7 @@ unit IniFileEx_Common;
 interface
 
 uses
-  SysUtils,
+  SysUtils, Classes,
   AuxTypes, CRC32;
 
 {===============================================================================
@@ -93,8 +93,6 @@ type
     INI formatting and other settings
 ===============================================================================}
 type
-  TIFXDuplicityBehavior = (idbDrop,idbReplace,idbRenameOld,idbRenameNew);
-
   TIFXIniFormat = record
     EscapeChar:       TIFXChar;
     QuoteChar:        TIFXChar;
@@ -111,6 +109,10 @@ type
     LineBreak:        TIFXString;
   end;
 
+  TIFXDuplicityBehavior = (idbDrop,idbReplace,idbRenameOld,idbRenameNew);
+
+  TIFXWorkingStyle = (iwsStandalone,iwsOnStream,iwsOnFile);
+
   TIFXSettings = record
     FormatSettings:         TFormatSettings;
     IniFormat:              TIFXIniFormat;
@@ -119,6 +121,9 @@ type
     DuplicityBehavior:      TIFXDuplicityBehavior;
     DuplicityRenameOldStr:  TIFXString;
     DuplicityRenameNewStr:  TIFXString;
+    WorkingStyle:           TIFXWorkingStyle;
+    WorkingStream:          TStream;
+    WorkingFile:            String;
     WriteByteOrderMask:     Boolean;
   end;
   PIFXSettings = ^TIFXSettings;

@@ -36,6 +36,9 @@ type
     Function GetKeyNodeIdx(SectionIndex, KeyIndex: Integer): TIFXKeyNode;
   {$ENDIF}
   protected
+  {$IFNDEF AllowLowLevelAccess}
+    property FileNode: TIFXFileNode read fFileNode; // required for assigning
+  {$ENDIF}
     procedure Initialize; virtual;
     procedure Finalize; virtual;
     procedure SectionCreateHandler(Sender: TObject; Section: TIFXSectionNode); virtual;
@@ -44,7 +47,10 @@ type
     procedure KeyDestroyHandler(Sender: TObject; Section: TIFXSectionNode; Key: TIFXKeyNode); virtual;
     Function WritingValue(const Section, Key: TIFXString): TIFXKeyNode; virtual;
   public
-    constructor Create;
+    constructor Create; overload;
+    //constructor Create(Stream: TStream); overload;
+    //constructor Create(const FileName: String); overload;
+    //constructor CreateCopy(Src: TIniFileEx); overload;
     destructor Destroy; override;
     // file/stream manipulation
     procedure SaveToTextualStream(Stream: TStream); virtual;
@@ -60,6 +66,27 @@ type
     procedure LoadFromTextualFile(const FileName: String); virtual;
     procedure LoadFromBinaryFile(const FileName: String); virtual;
     procedure LoadFromFile(const FileName: String); virtual;
+
+    //procedure AppendToTextualStream(Stream: TStream); virtual;
+    //procedure AppendToBinaryStream(Stream: TStream); virtual;
+    //procedure AppendToStream(Stream: TStream); virtual;
+    //procedure AppendToTextualFile(const FileName: String); virtual;
+    //procedure AppendToBinaryFile(const FileName: String); virtual;
+    //procedure AppendToFile(const FileName: String); virtual;    
+
+    procedure AppendFromTextualStream(Stream: TStream); virtual;
+    procedure AppendFromBinaryStream(Stream: TStream); virtual;
+    procedure AppendFromStream(Stream: TStream); virtual;
+    procedure AppendFromTextualFile(const FileName: String); virtual;
+    procedure AppendFromBinaryFile(const FileName: String); virtual;
+    procedure AppendFromFile(const FileName: String); virtual;
+
+    //procedure Flush; virtual;
+    //procedure Update(Clear: Boolean = False); virtual;
+
+    // assigning from object
+    procedure Assign(Ini: TIniFileEx); virtual;
+    procedure Append(Ini: TIniFileEx); virtual;
     // structure access
     Function IndexOfSection(const Section: TIFXString): Integer; virtual;
     Function IndexOfKey(const Section, Key: TIFXString): TIFXNodeIndices; overload; virtual;
@@ -359,6 +386,7 @@ constructor TIniFileEx.Create;
 begin
 inherited Create;
 Initialize;
+fSettings.WorkingStyle := iwsStandalone;
 end;
 
 //------------------------------------------------------------------------------
@@ -376,15 +404,21 @@ begin
 fParser.WriteTextual(Stream);
 end;
 
+//------------------------------------------------------------------------------
+
 procedure TIniFileEx.SaveToBinaryStream(Stream: TStream);
 begin
 fParser.WriteBinary(Stream);
 end;
 
+//------------------------------------------------------------------------------
+
 procedure TIniFileEx.SaveToStream(Stream: TStream);
 begin
 SaveToTextualStream(Stream);
 end;
+
+//------------------------------------------------------------------------------
 
 procedure TIniFileEx.SaveToTextualFile(const FileName: String);
 var
@@ -393,10 +427,13 @@ begin
 FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
 try
   SaveToTextualStream(FileStream);
+  FileStream.Size := FileStream.Position;
 finally
   FileStream.Free;
 end;
 end;
+
+//------------------------------------------------------------------------------
 
 procedure TIniFileEx.SaveToBinaryFile(const FileName: String);
 var
@@ -405,30 +442,45 @@ begin
 FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
 try
   SaveToBinaryStream(FileStream);
+  FileStream.Size := FileStream.Position;
 finally
   FileStream.Free;
 end;
 end;
+
+//------------------------------------------------------------------------------
 
 procedure TIniFileEx.SaveToFile(const FileName: String);
 begin
 SaveToTextualFile(FileName);
 end;
 
+//------------------------------------------------------------------------------
+
 procedure TIniFileEx.LoadFromTextualStream(Stream: TStream);
 begin
+fFileNode.ClearSections;
+fFileNode.Comment := '';
 fParser.ReadTextual(Stream);
 end;
 
+//------------------------------------------------------------------------------
+
 procedure TIniFileEx.LoadFromBinaryStream(Stream: TStream);
 begin
+fFileNode.ClearSections;
+fFileNode.Comment := '';
 fParser.ReadBinary(Stream);
 end;
+
+//------------------------------------------------------------------------------
 
 procedure TIniFileEx.LoadFromStream(Stream: TStream);
 begin
 LoadFromTextualStream(Stream);
 end;
+
+//------------------------------------------------------------------------------
 
 procedure TIniFileEx.LoadFromTextualFile(const FileName: String);
 var
@@ -442,6 +494,8 @@ finally
 end;
 end;
 
+//------------------------------------------------------------------------------
+
 procedure TIniFileEx.LoadFromBinaryFile(const FileName: String);
 var
   FileStream: TFileStream;
@@ -453,10 +507,196 @@ finally
   FileStream.Free;
 end;
 end;
+ 
+//------------------------------------------------------------------------------
 
 procedure TIniFileEx.LoadFromFile(const FileName: String);
 begin
 LoadFromTextualFile(FileName);
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendFromTextualStream(Stream: TStream);
+begin
+fParser.ReadTextual(Stream);
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendFromBinaryStream(Stream: TStream);
+begin
+fParser.ReadBinary(Stream);
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendFromStream(Stream: TStream);
+begin
+AppendFromTextualStream(Stream);
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendFromTextualFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  AppendFromTextualStream(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendFromBinaryFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  AppendFromBinaryStream(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AppendFromFile(const FileName: String);
+begin
+AppendFromTextualFile(FileName);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.Assign(Ini: TIniFileEx);
+begin
+If not fSettings.ReadOnly then
+  begin
+    FreeAndNil(fParser);
+    FreeAndNil(fFileNode);
+    // create new objects
+    fSettings := Ini.Settings;
+    fFileNode := TIFXFileNode.CreateCopy(Ini.FileNode,SectionCreateHandler,KeyCreateHandler);
+    fFileNode.SettingsPtr := Addr(fSettings);
+    fFileNode.OnSectionCreate := SectionCreateHandler;
+    fFileNode.OnSectionDestroy := SectionDestroyHandler;
+    fFileNode.OnKeyCreate := KeyCreateHandler;
+    fFileNode.OnKeyDestroy := KeyDestroyHandler;
+    fParser := TIFXParser.Create(@fSettings,fFileNode);
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.Append(Ini: TIniFileEx);
+var
+  i,j:          Integer;
+  SIdx,KIdx:    Integer;
+  ExtFileNode:  TIFXFileNode;
+  NewSectNode:  TIFXSectionNode;
+  NewKeyNode:   TIFXKeyNode;
+  Counter:      Integer;
+begin
+If not fSettings.ReadOnly and (Ini.SectionCount > 0) then
+  begin
+    ExtFileNode := Ini.FileNode;
+    For i := ExtFileNode.LowIndex to ExtFileNode.HighIndex do
+      begin
+        // sections...
+        SIdx := fFileNode.IndexOfSection(ExtFileNode[i].NameStr);
+        If SIdx >= 0 then
+          begin
+            // section of this name is already present, append comment...
+            If Length(fFileNode[SIdx].Comment) > 0 then
+              case fSettings.DuplicityBehavior of
+                idbReplace:
+                  fFileNode[SIdx].Comment := ExtFileNode[i].Comment;
+                idbRenameOld:
+                  If Length(ExtFileNode[i].Comment) > 0 then
+                    fFileNode[SIdx].Comment := ExtFileNode[i].Comment + fSettings.IniFormat.LineBreak +
+                      fSettings.IniFormat.LineBreak + TIFXString('Old comment:') +
+                      fSettings.IniFormat.LineBreak + fFileNode[SIdx].Comment;
+                idbRenameNew:
+                  If Length(ExtFileNode[i].Comment) > 0 then
+                    fFileNode[SIdx].Comment := fFileNode[SIdx].Comment + fSettings.IniFormat.LineBreak +
+                      fSettings.IniFormat.LineBreak + TIFXString('New comment:') +
+                      fSettings.IniFormat.LineBreak + ExtFileNode[i].Comment;
+              else
+                {idbDrop} // do nothing
+              end
+            else fFileNode[SIdx].Comment := ExtFileNode[i].Comment;
+            // ... and copy only keys
+            For j := ExtFileNode[i].LowIndex to ExtFileNode[i].HighIndex do
+              begin
+                KIdx := fFileNode[SIdx].IndexOfKey(ExtFileNode[i].NameStr);
+                If KIdx >= 0 then
+                  // key of this name is already present, decide what to do...
+                  case fSettings.DuplicityBehavior of
+                    idbReplace:
+                      begin
+                        fFileNode[SIdx].DeleteKey(KIdx);
+                        NewKeyNode := TIFXKeyNode.CreateCopy(ExtFileNode[i][j]);
+                        fFileNode[SIdx].AddKeyNode(NewKeyNode);
+                        KeyCreateHandler(Self,fFileNode[SIdx],NewKeyNode);
+                      end;
+                    idbRenameOld:
+                      begin
+                        If fFileNode[SIdx].IndexOfKey(fFileNode[SIdx][KIdx].NameStr + fSettings.DuplicityRenameOldStr) >= 0 then
+                          begin
+                            Counter := 0;
+                            while fFileNode[SIdx].IndexOfKey(fFileNode[SIdx][KIdx].NameStr +
+                              fSettings.DuplicityRenameOldStr + StrToIFXStr(IntToStr(Counter))) >= 0 do
+                              Inc(Counter);
+                            fFileNode[SIdx][KIdx].NameStr := fFileNode[SIdx][KIdx].NameStr +
+                              fSettings.DuplicityRenameOldStr + StrToIFXStr(IntToStr(Counter));
+                          end
+                        else fFileNode[SIdx][KIdx].NameStr := fFileNode[SIdx][KIdx].NameStr + fSettings.DuplicityRenameOldStr;
+                        NewKeyNode := TIFXKeyNode.CreateCopy(ExtFileNode[i][j]);
+                        fFileNode[SIdx].AddKeyNode(NewKeyNode);
+                        KeyCreateHandler(Self,fFileNode[SIdx],NewKeyNode);
+                      end;
+                    idbRenameNew:
+                      begin
+                        NewKeyNode := TIFXKeyNode.CreateCopy(ExtFileNode[i][j]);
+                        If fFileNode[SIdx].IndexOfKey(NewKeyNode.NameStr + fSettings.DuplicityRenameNewStr) >= 0 then
+                          begin
+                            Counter := 0;
+                            while fFileNode[SIdx].IndexOfKey(NewKeyNode.NameStr + fSettings.DuplicityRenameNewStr +
+                              StrToIFXStr(IntToStr(Counter))) >= 0 do
+                              Inc(Counter);
+                            NewKeyNode.NameStr := NewKeyNode.NameStr + fSettings.DuplicityRenameNewStr + StrToIFXStr(IntToStr(Counter));
+                          end
+                        else NewKeyNode.NameStr := NewKeyNode.NameStr + fSettings.DuplicityRenameNewStr;
+                        fFileNode[SIdx].AddKeyNode(NewKeyNode);
+                        KeyCreateHandler(Self,fFileNode[SIdx],NewKeyNode);
+                      end;
+                  else
+                    {idbDrop}
+                    // do nothing
+                  end
+                else
+                  begin
+                    // key of this name is not yet in this section, add copy
+                    NewKeyNode := TIFXKeyNode.CreateCopy(ExtFileNode[i][j]);
+                    fFileNode[SIdx].AddKeyNode(NewKeyNode);
+                    KeyCreateHandler(Self,fFileNode[SIdx],NewKeyNode);
+                  end;
+              end;
+          end
+        else
+          begin
+            // section of this name is not yet present, create and add copy
+            NewSectNode := TIFXSectionNode.CreateCopy(ExtFileNode[i],KeyCreateHandler);
+            fFileNode.AddSectionNode(NewSectNode);
+            SectionCreateHandler(Self,NewSectNode);
+          end;
+      end;
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -630,7 +870,7 @@ var
   var
     NewSectionNode: TIFXSectionNode;
   begin
-    NewSectionNode := TIFXSectionNode.CreateCopy(SrcSectionNode);
+    NewSectionNode := TIFXSectionNode.CreateCopy(SrcSectionNode,KeyCreateHandler);
     NewSectionNode.NameStr := NewSectionName;
     fFileNode.AddSectionNode(NewSectionNode);
     SectionCreateHandler(Self,NewSectionNode);

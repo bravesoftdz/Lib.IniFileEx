@@ -1,3 +1,11 @@
+{$IF defined(CPU64) or defined(CPU64BITS)}
+  {$DEFINE 64bit}
+{$ELSEIF defined(CPU16)}
+  {$MESSAGE FATAL '16bit CPU not supported'}
+{$ELSE}
+  {$DEFINE 32bit}
+{$IFEND}
+
 {$IFDEF FPC}
   {$MODE ObjFPC}{$H+}
   {$MODESWITCH CLASSICPROCVARS+}
@@ -13,4 +21,4 @@
   {$IFEND}
 {$ENDIF}
 
-{$DEFINE AllowLowLevelAccess}
+{.$DEFINE AllowLowLevelAccess}
