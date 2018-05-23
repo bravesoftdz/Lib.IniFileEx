@@ -80,6 +80,8 @@ type
     Function Binary_0000_ReadSection(out SectionNode: TIFXSectionNode): Boolean; virtual;
     Function Binary_0000_ReadKey(SectionNode: TIFXSectionNode; out KeyNode: TIFXKeyNode): Boolean; virtual;
   public
+    class Function IsBinaryIniStream(Stream: TStream): Boolean; virtual;
+    class Function IsBinaryIniFile(const FileName: String): Boolean; virtual;
     constructor Create(SettingsPtr: PIFXSettings; FileNode: TIFXFileNode);
     // auxiliary methods
     Function ConstructCommentBlock(const CommentStr: TIFXString): TIFXString; virtual;
@@ -96,7 +98,7 @@ implementation
 
 uses
   SysUtils,
-  BinaryStreaming,
+  BinaryStreaming, StrRect,
   IniFileEx_Utils;
 
 {
@@ -784,6 +786,30 @@ end;
 {-------------------------------------------------------------------------------
     TIFXParser - public methods
 -------------------------------------------------------------------------------}
+
+class Function TIFXParser.IsBinaryIniStream(Stream: TStream): Boolean;
+begin
+If (Stream.Size - Stream.Position) >= IFX_BINI_MINFILESIZE then
+  Result := Stream_ReadUInt32(Stream,False) = IFX_BINI_SIGNATURE_FILE
+else
+  Result := False;
+end;
+
+//------------------------------------------------------------------------------
+
+class Function TIFXParser.IsBinaryIniFile(const FileName: String): Boolean;
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  Result := IsBinaryIniStream(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+
+//------------------------------------------------------------------------------
 
 constructor TIFXParser.Create(SettingsPtr: PIFXSettings; FileNode: TIFXFileNode);
 begin

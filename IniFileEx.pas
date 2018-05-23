@@ -533,7 +533,10 @@ end;
 
 procedure TIniFileEx.LoadFromStream(Stream: TStream);
 begin
-LoadFromTextualStream(Stream);
+If fParser.IsBinaryIniStream(Stream) then
+  LoadFromBinaryStream(Stream)
+else
+  LoadFromTextualStream(Stream);
 end;
 
 //------------------------------------------------------------------------------
@@ -548,6 +551,30 @@ try
 finally
   FileStream.Free;
 end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.LoadFromBinaryFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  LoadFromBinaryStream(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.LoadFromFile(const FileName: String);
+begin
+If fParser.IsBinaryIniFile(FileName) then
+  LoadFromBinaryFile(FileName)
+else
+  LoadFromTextualFile(FileName);
 end;
 
 //------------------------------------------------------------------------------
@@ -588,7 +615,10 @@ end;
 
 procedure TIniFileEx.AppendToStream(Stream: TStream);
 begin
-AppendToTextualStream(Stream);
+If fParser.IsBinaryIniStream(Stream) then
+  AppendToBinaryStream(Stream)
+else
+  AppendToTextualStream(Stream);
 end;
 
 //------------------------------------------------------------------------------
@@ -623,30 +653,12 @@ end;
 
 procedure TIniFileEx.AppendToFile(const FileName: String);
 begin
-AppendToTextualFile(FileName);
+If fParser.IsBinaryIniFile(FileName) then
+  AppendToBinaryFile(FileName)
+else
+  AppendToTextualFile(FileName);
 end;
 
-//------------------------------------------------------------------------------
-
-procedure TIniFileEx.LoadFromBinaryFile(const FileName: String);
-var
-  FileStream: TFileStream;
-begin
-FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
-try
-  LoadFromBinaryStream(FileStream);
-finally
-  FileStream.Free;
-end;
-end;
- 
-//------------------------------------------------------------------------------
-
-procedure TIniFileEx.LoadFromFile(const FileName: String);
-begin
-LoadFromTextualFile(FileName);
-end;
- 
 //------------------------------------------------------------------------------
 
 procedure TIniFileEx.AppendFromTextualStream(Stream: TStream);
@@ -665,7 +677,10 @@ end;
 
 procedure TIniFileEx.AppendFromStream(Stream: TStream);
 begin
-AppendFromTextualStream(Stream);
+If fParser.IsBinaryIniStream(Stream) then
+  AppendFromBinaryStream(Stream)
+else
+  AppendFromTextualStream(Stream);
 end;
  
 //------------------------------------------------------------------------------
@@ -700,7 +715,10 @@ end;
 
 procedure TIniFileEx.AppendFromFile(const FileName: String);
 begin
-AppendFromTextualFile(FileName);
+If fParser.IsBinaryIniFile(FileName) then
+  AppendFromBinaryFile(FileName)
+else
+  AppendFromTextualFile(FileName);
 end;
 
 //------------------------------------------------------------------------------
