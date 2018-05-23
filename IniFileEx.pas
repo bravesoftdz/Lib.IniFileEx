@@ -9,6 +9,14 @@ uses
   AuxTypes, AuxClasses,
   IniFileEx_Common, IniFileEx_Nodes, IniFileEx_Parser;
 
+{===============================================================================
+--------------------------------------------------------------------------------
+                                   TIniFileEx
+--------------------------------------------------------------------------------
+===============================================================================}
+{===============================================================================
+    TIniFileEx - class declaration
+===============================================================================}
 type
   TIniFileEx = class(TCustomObject)
   private
@@ -188,12 +196,25 @@ implementation
 
 uses
   SysUtils,
-  StrRect;
+  StrRect,
+  IniFileEx_Utils;
 
 {$IFDEF FPC_DisableWarns}
   {$DEFINE FPCDWM}
   {$DEFINE W5024:={$WARN 5024 OFF}} // Parameter "$1" not used
 {$ENDIF}
+
+{===============================================================================
+--------------------------------------------------------------------------------
+                                   TIniFileEx
+--------------------------------------------------------------------------------
+===============================================================================}
+{===============================================================================
+    TIniFileEx - class implementation
+===============================================================================}
+{-------------------------------------------------------------------------------
+    TIniFileEx - private methods
+-------------------------------------------------------------------------------}
 
 Function TIniFileEx.GetSettingsPtr: PIFXSettings;
 begin
@@ -255,7 +276,9 @@ end;
 
 {$ENDIF}
 
-//==============================================================================
+{-------------------------------------------------------------------------------
+    TIniFileEx - protected methods
+-------------------------------------------------------------------------------}
 
 procedure TIniFileEx.Initialize;
 begin
@@ -328,7 +351,9 @@ KeyIndex := fFileNode[SectionIndex].AddKey(Key);
 Result := fFileNode[SectionIndex][KeyIndex];
 end;
 
-//==============================================================================
+{-------------------------------------------------------------------------------
+    TIniFileEx - public methods
+-------------------------------------------------------------------------------}
 
 constructor TIniFileEx.Create;
 begin
@@ -1193,15 +1218,7 @@ begin
 If not fSettings.ReadOnly then
   with WritingValue(Section,Key) do
     begin
-    {$IF SizeOf(Integer) = 2}
-      SetValueInt16(Value);
-    {$ELSEIF SizeOf(Integer) = 4}
-     SetValueInt32(Value);
-    {$ELSEIF SizeOf(Integer) = 8}
-      SetValueInt64(Value);
-    {$ELSE}
-      {$MESSAGE FATAL 'Unsupported integer size'}
-    {$IFEND}
+      SetValueInt32(Value);
       ValueEncoding := Encoding;
     end;
 end;
@@ -1609,15 +1626,7 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-{$IF SizeOf(Integer) = 2}
-  KeyNode.GetValueInt16(Result)
-{$ELSEIF SizeOf(Integer) = 4}
   KeyNode.GetValueInt32(Result)
-{$ELSEIF SizeOf(Integer) = 8}
-  KeyNode.GetValueInt64(Result)
-{$ELSE}
-  {$MESSAGE FATAL 'Unsupported integer size'}
-{$IFEND}
 else
   Result := Default;
 end;

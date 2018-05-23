@@ -9,6 +9,11 @@ uses
   AuxTypes, ExplicitStringLists,
   IniFileEx_Common, IniFileEx_Nodes;
 
+{===============================================================================
+--------------------------------------------------------------------------------
+                                   TIFXParser
+--------------------------------------------------------------------------------
+===============================================================================}
 type
   TIFXBiniFileHeader = packed record
     Signature:  UInt32;
@@ -33,6 +38,9 @@ const
   IFX_BINI_FLAGS_ZLIB_COMPRESS = UInt16($0001); // not yet implemented
   IFX_BINI_FLAGS_AES_ENCRYPT   = UInt16($0002); // not yet implemented
 
+{===============================================================================
+    TIFXParser - class declaration
+===============================================================================}
 type
   TIFXParser = class(TObject)
   private
@@ -87,7 +95,8 @@ implementation
 
 uses
   SysUtils,
-  BinaryStreaming;
+  BinaryStreaming,
+  IniFileEx_Utils;
 
 {
   Binary INI format:
@@ -122,7 +131,17 @@ uses
     UTF8Char[]  - array of UTF8 characters
 }
 
-//------------------------------------------------------------------------------
+{===============================================================================
+--------------------------------------------------------------------------------
+                                   TIFXParser                                                                         
+--------------------------------------------------------------------------------
+===============================================================================}
+{===============================================================================
+    TIFXParser - class implementation
+===============================================================================}
+{-------------------------------------------------------------------------------
+    TIFXParser - protected methods
+-------------------------------------------------------------------------------}
 
 Function TIFXParser.Text_WriteEmptyLine: TMemSize;
 var
@@ -749,7 +768,9 @@ end;
 If FreeNode then FreeAndNil(KeyNode); 
 end;
 
-//==============================================================================
+{-------------------------------------------------------------------------------
+    TIFXParser - public methods
+-------------------------------------------------------------------------------}
 
 constructor TIFXParser.Create(SettingsPtr: PIFXSettings; FileNode: TIFXFileNode);
 begin
@@ -993,8 +1014,7 @@ If (Stream.Size - Stream.Position) >= SizeOf(TIFXBiniFileHeader) then
       end
     else raise Exception.CreateFmt('TIFXParser.ReadBinary: Wrong file signature (0x%.8x).',[fBinFileHeader.Signature]);
   end
-else raise Exception.CreateFmt('TIFXParser.ReadBinary: Not enough data (%d) for file header.',
-                               [Stream.Size - Stream.Position]);
+else raise Exception.CreateFmt('TIFXParser.ReadBinary: Not enough data (%d) for file header.',[Stream.Size - Stream.Position]);
 end;
 
 end.
