@@ -50,7 +50,7 @@ type
     constructor Create; overload;
     constructor Create(Stream: TStream); overload;
     constructor Create(const FileName: String); overload;
-    //constructor CreateCopy(Src: TIniFileEx); overload;
+    constructor CreateCopy(Src: TIniFileEx); overload;
     destructor Destroy; override;
     // file/stream manipulation
     procedure SaveToTextualStream(Stream: TStream); virtual;
@@ -59,32 +59,27 @@ type
     procedure SaveToTextualFile(const FileName: String); virtual;
     procedure SaveToBinaryFile(const FileName: String); virtual;
     procedure SaveToFile(const FileName: String); virtual;
-
     procedure LoadFromTextualStream(Stream: TStream); virtual;
     procedure LoadFromBinaryStream(Stream: TStream); virtual;
     procedure LoadFromStream(Stream: TStream); virtual;
     procedure LoadFromTextualFile(const FileName: String); virtual;
     procedure LoadFromBinaryFile(const FileName: String); virtual;
     procedure LoadFromFile(const FileName: String); virtual;
-
     procedure AppendToTextualStream(Stream: TStream); virtual;
     procedure AppendToBinaryStream(Stream: TStream); virtual;
     procedure AppendToStream(Stream: TStream); virtual;
     procedure AppendToTextualFile(const FileName: String); virtual;
     procedure AppendToBinaryFile(const FileName: String); virtual;
     procedure AppendToFile(const FileName: String); virtual;
-
     procedure AppendFromTextualStream(Stream: TStream); virtual;
     procedure AppendFromBinaryStream(Stream: TStream); virtual;
     procedure AppendFromStream(Stream: TStream); virtual;
     procedure AppendFromTextualFile(const FileName: String); virtual;
     procedure AppendFromBinaryFile(const FileName: String); virtual;
     procedure AppendFromFile(const FileName: String); virtual;
-
     procedure Flush; virtual;
     procedure Update(Clear: Boolean = False); virtual;
-
-    // assigning from object
+    // assigning from objects
     procedure Assign(Ini: TIniFileEx); virtual;
     procedure Append(Ini: TIniFileEx); virtual;
     // structure access
@@ -409,6 +404,20 @@ Initialize;
 fSettings.WorkingStyle := iwsOnFile;
 fSettings.WorkingFile := FileName;
 LoadFromFile(FileName);
+end;
+
+//------------------------------------------------------------------------------
+
+constructor TIniFileEx.CreateCopy(Src: TIniFileEx);
+begin
+inherited Create;
+fSettings := Src.Settings;
+fFileNode := TIFXFileNode.CreateCopy(Src.FileNode,SectionCreateHandler,KeyCreateHandler);
+fFileNode.OnSectionCreate := SectionCreateHandler;
+fFileNode.OnSectionDestroy := SectionDestroyHandler;
+fFileNode.OnKeyCreate := KeyCreateHandler;
+fFileNode.OnKeyDestroy := KeyDestroyHandler;
+fParser := TIFXParser.Create(Addr(fSettings),fFileNode);
 end;
 
 //------------------------------------------------------------------------------
