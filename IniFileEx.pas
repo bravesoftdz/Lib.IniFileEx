@@ -7,7 +7,7 @@ interface
 uses
   Classes, 
   AuxTypes, AuxClasses,
-  IniFileEx_Common, IniFileEx_Nodes, IniFileEx_Parsing;
+  IniFileEx_Common, IniFileEx_Nodes, IniFileEx_Parser;
 
 type
   TIniFileEx = class(TCustomObject)

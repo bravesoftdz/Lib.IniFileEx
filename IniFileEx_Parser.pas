@@ -1,4 +1,4 @@
-unit IniFileEx_Parsing;
+unit IniFileEx_Parser;
 
 {$INCLUDE '.\IniFileEx_defs.inc'}
 
@@ -18,6 +18,20 @@ type
   end;
 
   TIFXTextLineType = (tltEmpty,tltComment,tltSection,tltKey);
+
+const
+  IFX_UTF8BOM: packed array[0..2] of Byte = ($EF,$BB,$BF);
+
+  IFX_BINI_SIGNATURE_FILE    = UInt32($494E4942); // BINI
+  IFX_BINI_SIGNATURE_SECTION = UInt32($54434553); // SECT
+  IFX_BINI_SIGNATURE_KEY     = UInt32($5659454B); // KEYV
+
+  IFX_BINI_MINFILESIZE = SizeOf(TIFXBiniFileHeader);
+
+  IFX_BINI_STRUCT_0 = UInt16(0);  // more may be added in the future
+
+  IFX_BINI_FLAGS_ZLIB_COMPRESS = UInt16($0001); // not yet implemented
+  IFX_BINI_FLAGS_AES_ENCRYPT   = UInt16($0002); // not yet implemented
 
 type
   TIFXParser = class(TObject)
@@ -75,20 +89,6 @@ uses
   SysUtils,
   BinaryStreaming;
 
-const
-  IFX_UTF8BOM: packed array[0..2] of Byte = ($EF,$BB,$BF);
-
-  IFX_BINI_SIGNATURE_FILE    = UInt32($494E4942); // BINI
-  IFX_BINI_SIGNATURE_SECTION = UInt32($54434553); // SECT
-  IFX_BINI_SIGNATURE_KEY     = UInt32($5659454B); // KEYV
-
-  IFX_BINI_MINFILESIZE = SizeOf(TIFXBiniFileHeader);
-
-  IFX_BINI_STRUCT_0 = UInt16(0);  // more may be added in the future
-
-  IFX_BINI_FLAGS_ZLIB_COMPRESS = UInt16($0001); // not yet implemented
-  IFX_BINI_FLAGS_AES_ENCRYPT   = UInt16($0002); // not yet implemented
-  
 {
   Binary INI format:
     UInt32    - signature (BINI)
