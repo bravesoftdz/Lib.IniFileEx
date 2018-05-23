@@ -5,7 +5,7 @@ unit IniFileEx;
 interface
 
 uses
-  Classes, 
+  SysUtils, Classes, 
   AuxTypes, AuxClasses,
   IniFileEx_Common, IniFileEx_Nodes, IniFileEx_Parser;
 
@@ -209,6 +209,31 @@ type
   {$ENDIF}
     property Settings: TIFXSettings read fSettings write fSettings;
     property SettingsPtr: PIFXSettings read GetSettingsPtr;
+    // individual settings options
+    property FormatSettings: TFormatSettings read fSettings.FormatSettings write fSettings.FormatSettings;
+    property IniFormat: TIFXIniFormat read fSettings.IniFormat write fSettings.IniFormat;
+    property FullNameEval: Boolean read fSettings.FullNameEval write fSettings.FullNameEval;
+    property ReadOnly: Boolean read fSettings.ReadOnly write fSettings.ReadOnly;
+    property DuplicityBehavior: TIFXDuplicityBehavior read fSettings.DuplicityBehavior write fSettings.DuplicityBehavior;
+    property DuplicityRenameOldStr: TIFXString read fSettings.DuplicityRenameOldStr write fSettings.DuplicityRenameOldStr;
+    property DuplicityRenameNewStr: TIFXString read fSettings.DuplicityRenameNewStr write fSettings.DuplicityRenameNewStr;
+    property WorkingStyle: TIFXWorkingStyle read fSettings.WorkingStyle;
+    property WorkingStream: TStream read fSettings.WorkingStream;
+    property WorkingFile: String read fSettings.WorkingFile;
+    property WriteByteOrderMask: Boolean read fSettings.WriteByteOrderMask write fSettings.WriteByteOrderMask;
+    // individual Settings.IniFormat options
+    property EscapeChar: TIFXChar read fSettings.IniFormat.EscapeChar write fSettings.IniFormat.EscapeChar;
+    property QuoteChar: TIFXChar read fSettings.IniFormat.QuoteChar write fSettings.IniFormat.QuoteChar;
+    property NumericChar: TIFXChar read fSettings.IniFormat.NumericChar write fSettings.IniFormat.NumericChar;
+    property ForceQuote: Boolean read fSettings.IniFormat.ForceQuote write fSettings.IniFormat.ForceQuote;
+    property CommentChar: TIFXChar read fSettings.IniFormat.CommentChar write fSettings.IniFormat.CommentChar;
+    property SectionStartChar: TIFXChar read fSettings.IniFormat.SectionStartChar write fSettings.IniFormat.SectionStartChar;
+    property SectionEndChar: TIFXChar read fSettings.IniFormat.SectionEndChar write fSettings.IniFormat.SectionEndChar;
+    property ValueDelimChar: TIFXChar read fSettings.IniFormat.ValueDelimChar write fSettings.IniFormat.ValueDelimChar;
+    property WhiteSpaceChar: TIFXChar read fSettings.IniFormat.WhiteSpaceChar write fSettings.IniFormat.WhiteSpaceChar;
+    property KeyWhiteSpace: Boolean read fSettings.IniFormat.KeyWhiteSpace write fSettings.IniFormat.KeyWhiteSpace;
+    property ValueWhiteSpace: Boolean read fSettings.IniFormat.ValueWhiteSpace write fSettings.IniFormat.ValueWhiteSpace;
+    property LineBreak: TIFXString read fSettings.IniFormat.LineBreak write fSettings.IniFormat.LineBreak;
     property SectionCount: Integer read GetSectionCount;
     property SectionKeyCount[Index: Integer]: Integer read GetSectionKeyCount;
     property KeyCount: Integer read GetKeyCount;
@@ -217,7 +242,6 @@ type
 implementation
 
 uses
-  SysUtils,
   StrRect,
   IniFileEx_Utils;
 
