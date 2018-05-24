@@ -281,8 +281,10 @@ end;
 procedure TIFXKeyNode.SetValueStr(const Value: TIFXString);
 begin
 fValueStr := Value;
+fValueEncoding := iveDefault;
 fValueState := ivsNeedsDecode;
 fValueData.ValueType := ivtUndecided;
+FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -319,6 +321,8 @@ end;
 //==============================================================================
 
 procedure TIFXKeyNode.FreeData;
+var
+  OldValueType: TIFXValueType;
 begin
 fValueData.StringValue := '';
 If Assigned(fValueData.BinaryValuePtr) then
@@ -328,6 +332,9 @@ If Assigned(fValueData.BinaryValuePtr) then
     fValueData.BinaryValuePtr := nil;
     fValueData.BinaryValueSize := 0;
   end;
+OldValueType := fValueData.ValueType;
+FillChar(fValueData,SizeOf(TIFXValueData),0);
+fValueData.ValueType := OldValueType;
 end;
 
 //------------------------------------------------------------------------------
@@ -346,7 +353,6 @@ end;
 procedure TIFXKeyNode.EncodeValue;
 begin
 case fValueData.ValueType of
-  ivtUndecided: Exit;
   ivtBool:      EncodeBool;
   ivtInt8:      EncodeInt8;
   ivtUInt8:     EncodeUInt8;
@@ -363,6 +369,9 @@ case fValueData.ValueType of
   ivtDateTime:  EncodeDateTime;
   ivtString:    EncodeString;
   ivtBinary:    EncodeBinary;
+else
+  {ivtUndecided}
+  raise Exception.Create('TIFXKeyNode.EncodeValue: Undecided value type.');
 end;
 If fValueState in [ivsNeedsEncode,ivsUndefined] then
   fValueState := ivsReady;
@@ -582,7 +591,9 @@ end;
 
 Function TIFXKeyNode.GettingValue(ValueType: TIFXValueType): Boolean;
 begin
-If fValueState in [ivsNeedsDecode,ivsUndefined] then
+If (fValueState = ivsNeedsEncode) and (ValueType <> fValueData.ValueType) then
+  EncodeValue;
+If (fValueState in [ivsNeedsDecode,ivsUndefined]) or (ValueType <> fValueData.ValueType) then
   begin
     If (fValueData.ValueType <> ValueType) or (fValueData.ValueType = ivtBinary) then
       FreeData;
@@ -597,7 +608,6 @@ end;
 procedure TIFXKeyNode.DecodeValue;
 begin
 case fValueData.ValueType of
-  ivtUndecided: Exit;
   ivtBool:      DecodeBool;
   ivtInt8:      DecodeInt8;
   ivtUInt8:     DecodeUInt8;
@@ -614,8 +624,11 @@ case fValueData.ValueType of
   ivtDateTime:  DecodeDateTime;
   ivtString:    DecodeString;
   ivtBinary:    DecodeBinary;
+else
+  {ivtUndecided}
+  raise Exception.Create('TIFXKeyNode.EncodeValue: Undecided value type.');
 end;
-// value state is set during individual decodings
+fValueState := ivsReady;
 end;
 
 //------------------------------------------------------------------------------
@@ -633,29 +646,24 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.BoolValue := TempInt <> 0;
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,@TempByte,SizeOf(Byte),Encoding) = SizeOf(Byte) then
         begin
           fValueData.BoolValue := TempByte <> 0;
           fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
         end;
     '0'..'9','-':
       If TryStrToInt(IFXStrToStr(fValueStr),TempInt) then
         begin
           fValueData.BoolValue := TempInt <> 0;
           fValueEncoding := iveNumber;
-          fValueState := ivsReady;
         end;
   else
     If IFXTryStrToBool(fValueStr,fValueData.Boolvalue) then
-      begin
-        fValueEncoding := iveDefault;
-        fValueState := ivsReady;
-      end;
-  end;
+      fValueEncoding := iveDefault;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -672,22 +680,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.Int8Value := Int8(TempInt);
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.Int8Value),SizeOf(Int8),Encoding) = SizeOf(Int8) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(Int8)) and (TempInt <= High(Int8))) then
       begin
         fValueData.Int8Value := Int8(TempInt);
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -704,22 +708,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.UInt8Value := UInt8(TempInt);
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.UInt8Value),SizeOf(UInt8),Encoding) = SizeOf(UInt8) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt8)) and (TempInt <= High(UInt8))) then
       begin
         fValueData.UInt8Value := UInt8(TempInt);
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -736,22 +736,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.Int16Value := Int16(TempInt);
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.Int16Value),SizeOf(Int16),Encoding) = SizeOf(Int16) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(Int16)) and (TempInt <= High(Int16))) then
       begin
         fValueData.Int16Value := Int16(TempInt);
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -768,22 +764,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.UInt16Value := UInt16(TempInt);
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.UInt16Value),SizeOf(UInt16),Encoding) = SizeOf(UInt16) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToInt(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt16)) and (TempInt <= High(UInt16))) then
       begin
         fValueData.UInt16Value := UInt16(TempInt);
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -800,22 +792,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.Int32Value := Int32(TempInt);
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.Int32Value),SizeOf(Int32),Encoding) = SizeOf(Int32) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToInt64(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(Int32)) and (TempInt <= High(Int32))) then
       begin
         fValueData.Int32Value := Int32(TempInt);
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -832,22 +820,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.UInt32Value := UInt32(TempInt);
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.UInt32Value),SizeOf(UInt32),Encoding) = SizeOf(UInt32) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToInt64(IFXStrToStr(fValueStr),TempInt) and ((TempInt >= Low(UInt32)) and (TempInt <= High(UInt32))) then
       begin
         fValueData.UInt32Value := UInt32(TempInt);
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -864,22 +848,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.Int64Value := TempInt;
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.Int64Value),SizeOf(Int64),Encoding) = SizeOf(Int64) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToInt64(IFXStrToStr(fValueStr),TempInt) then
       begin
         fValueData.Int64Value := TempInt;
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -896,22 +876,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.UInt64Value := TempInt;
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.UInt64Value),SizeOf(UInt64),Encoding) = SizeOf(UInt64) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If IFXTryStrToUInt64(fValueStr,TempInt) then
       begin
         fValueData.UInt64Value := TempInt;
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -928,22 +904,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.Float32Value := TempFloat;
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.Float32Value),SizeOf(Float32),Encoding) = SizeOf(Float32) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToFloat(IFXStrToStr(fValueStr),TempFloat,fSettingsPtr^.FormatSettings) then
       begin
         fValueData.Float32Value := TempFloat;
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -960,22 +932,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.Float64Value := TempFloat;
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.Float64Value),SizeOf(Float64),Encoding) = SizeOf(Float64) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToFloat(IFXStrToStr(fValueStr),TempFloat,fSettingsPtr^.FormatSettings) then
       begin
         fValueData.Float64Value := TempFloat;
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -992,22 +960,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.DateValue := TDateTime(TempFloat);
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.DateValue),SizeOf(TDateTime),Encoding) = SizeOf(TDateTime) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToDate(IFXStrToStr(fValueStr),TDateTime(TempFloat),fSettingsPtr^.FormatSettings) then
       begin
         fValueData.DateValue := TDateTime(TempFloat);
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -1024,22 +988,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.TimeValue := TDateTime(TempFloat);
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.TimeValue),SizeOf(TDateTime),Encoding) = SizeOf(TDateTime) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToTime(IFXStrToStr(fValueStr),TDateTime(TempFloat),fSettingsPtr^.FormatSettings) then
       begin
         fValueData.TimeValue := TDateTime(TempFloat);
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -1056,22 +1016,18 @@ If Length(fValueStr) > 0 then
         begin
           fValueData.DateTimeValue := TDateTime(TempFloat);
           fValueEncoding := iveHexadecimal;
-          fValueState := ivsReady;
         end;
     WideEncodingHeaderStart:
       If WideDecode(fValueStr,Addr(fValueData.DateTimeValue),SizeOf(TDateTime),Encoding) = SizeOf(TDateTime) then
-        begin
-          fValueEncoding := IFXValueEncFromEnc(Encoding);
-          fValueState := ivsReady;
-        end;
+        fValueEncoding := IFXValueEncFromEnc(Encoding);
   else
     If TryStrToDateTime(IFXStrToStr(fValueStr),TDateTime(TempFloat),fSettingsPtr^.FormatSettings) then
       begin
         fValueData.DateTimeValue := TDateTime(TempFloat);
         fValueEncoding := iveDefault;
-        fValueState := ivsReady;
       end;
-  end;
+  end
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -1099,8 +1055,7 @@ If Length(fValueStr) > 0 then
     fValueData.StringValue := IFXDecodeString(fValueStr,fSettingsPtr^.IniFormat);
     fValueEncoding := iveDefault;
   end
-else fValueData.StringValue := '';
-fValueState := ivsReady;
+else FreeData;
 end;
 
 //------------------------------------------------------------------------------
@@ -1113,8 +1068,8 @@ If Length(fValueStr) > 0 then
   begin
     fValueData.BinaryValuePtr := WideDecode(fValueStr,fValueData.BinaryValueSize,Encoding);
     fValueEncoding := IFXValueEncFromEnc(Encoding);
-    fValueState := ivsReady;
-  end;
+  end
+else FreeData;
 end;
 
 //==============================================================================

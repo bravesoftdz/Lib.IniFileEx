@@ -305,7 +305,11 @@ begin
 {$IFDEF Unicode}
 Result := AnsiCompareStr(S1,S2);
 {$ELSE}
+{$IFDEF FPC}
+Result := UnicodeCompareStr(S1,S2);
+{$ELSE}
 Result := WideCompareStr(S1,S2);
+{$ENDIF}
 {$ENDIF}
 end;
 
@@ -316,7 +320,11 @@ begin
 {$IFDEF Unicode}
 Result := AnsiCompareText(S1,S2);
 {$ELSE}
+{$IFDEF FPC}
+Result := UnicodeCompareText(S1,S2);
+{$ELSE}
 Result := WideCompareText(S1,S2);
+{$ENDIF}
 {$ENDIF}
 end;
 
@@ -540,7 +548,11 @@ begin
 {$IFDEF Unicode}
 HashStr.Hash := WideStringCRC32(AnsiLowerCase(HashStr.Str));
 {$ELSE}
+{$IFDEF FPC}
+HashStr.Hash := WideStringCRC32(UnicodeLowerCase(HashStr.Str));
+{$ELSE}
 HashStr.Hash := WideStringCRC32(WideLowerCase(HashStr.Str));
+{$ENDIF}
 {$ENDIF}
 end;
 
@@ -557,12 +569,7 @@ end;
 
 Function IFXSameHashString(const S1, S2: TIFXHashedString; FullEval: Boolean = True): Boolean;
 begin
-Result := SameCRC32(S1.Hash,S2.Hash) and (not FullEval or
-{$IFDEF Unicode}
-  AnsiSameText(S1.Str,S2.Str)
-{$ELSE}
-  WideSameText(S1.Str,S2.Str)
-{$ENDIF});
+Result := SameCRC32(S1.Hash,S2.Hash) and (not FullEval or (IFXCompareText(S1.Str,S2.Str) = 0));
 end;
 
 {===============================================================================
@@ -691,9 +698,9 @@ const
     ('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
   def_LongMonthNames: array[1..12] of String =
     ('January','February','March','April','May','June','July','August','September','October','November','December');
-  def_ShortDayNames: array[1..7] of String  =
+  def_ShortDayNames: array[1..7] of String =
     ('Sun','Mon','Tue','Wed','Thu','Fri','Sat');
-  def_LongDayNames: array[1..7] of String  =
+  def_LongDayNames: array[1..7] of String =
     ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday');
 var
   i:  Integer;

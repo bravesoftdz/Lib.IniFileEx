@@ -5,7 +5,7 @@ unit IniFileEx;
 interface
 
 uses
-  SysUtils, Classes, 
+  SysUtils, Classes, IniFiles,
   AuxTypes, AuxClasses,
   IniFileEx_Common, IniFileEx_Nodes, IniFileEx_Parser;
 
@@ -80,7 +80,8 @@ type
     procedure Flush; virtual;
     procedure Update(Clear: Boolean = False); virtual;
     // assigning from objects
-    procedure Assign(Ini: TIniFileEx); virtual;
+    procedure Assign(Ini: TIniFile); overload; virtual;
+    procedure Assign(Ini: TIniFileEx); overload; virtual;
     procedure Append(Ini: TIniFileEx); virtual;
     // structure access
     Function IndexOfSection(const Section: TIFXString): Integer;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
@@ -877,6 +878,39 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TIniFileEx.Assign(Ini: TIniFile);
+var
+  Sections: TStringList;
+  Keys:     TStringList;
+  i,j:      Integer;
+begin
+If not fSettings.ReadOnly then
+  begin
+    Sections := TStringList.Create;
+    try
+      Keys := TStringList.Create;
+      try
+        Clear;      
+        Ini.ReadSections(Sections);
+        For i := 0 to Pred(Sections.Count) do
+          begin
+            Keys.Clear;
+            AddSection(Sections[i]);
+            Ini.ReadSection(Sections[i],Keys);
+            For j := 0 to Pred(Keys.Count) do
+              WriteString(Sections[i],Keys[j],Ini.ReadString(Sections[i],Keys[j],''));
+          end;
+      finally
+        Keys.Free;
+      end;
+    finally
+      Sections.Free;
+    end;
+  end;
+end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 procedure TIniFileEx.Assign(Ini: TIniFileEx);
 begin
 If not fSettings.ReadOnly then
@@ -1061,11 +1095,18 @@ end;
 procedure TIniFileEx.AddKey(const Section, Key: TIFXString);
 var
   SectionIndex: Integer;
+  KeyIndex:     Integer;
 begin
 If not fSettings.ReadOnly then
   begin
     SectionIndex := fFileNode.AddSection(Section);
-    fFileNode[SectionIndex].AddKey(Key);
+    KeyIndex := fFileNode[SectionIndex].IndexOfKey(Key);
+    If KeyIndex < 0 then
+      begin
+        KeyIndex := fFileNode[SectionIndex].AddKey(Key);
+        // set some arbitrary value so the value type is not left as undecided
+        fFileNode[SectionIndex][KeyIndex].SetValueString('');
+      end;
   end;
 end;
  
@@ -1902,7 +1943,7 @@ end;
 procedure TIniFileEx.WriteString(const Section, Key: TIFXString; const Value: String);
 begin
 If not fSettings.ReadOnly then
-  WritingValue(Section,Key).SetValueString(StrToUnicode(Value));
+  WritingValue(Section,Key).SetValueString(StrToIFXStr(Value));
 end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1912,7 +1953,7 @@ begin
 If not fSettings.ReadOnly then
   with WritingValue(Section,Key) do
     begin
-      SetValueString(StrToUnicode(Value));
+      SetValueString(StrToIFXStr(Value));
       ValueEncoding := Encoding;
     end;
 end;
@@ -2072,9 +2113,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueBool(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueBool(Result) then
+      Result := Default
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2084,9 +2127,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueInt8(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueInt8(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2096,9 +2141,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueUInt8(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueUInt8(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2108,9 +2155,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueInt16(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueInt16(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2120,9 +2169,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueUInt16(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueUInt16(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2132,9 +2183,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueInt32(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueInt32(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2144,9 +2197,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueUInt32(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueUInt32(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2156,9 +2211,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueInt64(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueInt64(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2168,9 +2225,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueUInt64(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueUInt64(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2180,9 +2239,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueInt32(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueInt32(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2192,9 +2253,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueFloat32(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueFloat32(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2204,9 +2267,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueFloat64(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueFloat64(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2216,9 +2281,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueFloat64(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueFloat64(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2228,9 +2295,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueDate(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueDate(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2240,9 +2309,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueTime(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueTime(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2252,9 +2323,11 @@ var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueDateTime(Result)
-else
-  Result := Default;
+  begin
+    If not KeyNode.GetValueDateTime(Result) then
+      Result := Default;
+  end
+else Result := Default;
 end;
 
 //------------------------------------------------------------------------------
@@ -2266,8 +2339,10 @@ var
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
   begin
-    KeyNode.GetValueString(OutTemp);
-    Result := IFXStrToStr(OutTemp);
+    If KeyNode.GetValueString(OutTemp) then
+      Result := IFXStrToStr(OutTemp)
+    else
+      Result := Default;
   end
 else Result := Default;
 end;
@@ -2280,9 +2355,11 @@ var
   Dummy:    Pointer;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
-  KeyNode.GetValueBinary(Dummy,Result,False)
-else
-  Result := 0;
+  begin
+    If not KeyNode.GetValueBinary(Dummy,Result,False) then
+      Result := 0;
+  end
+else Result := 0;
 end;
 
 //------------------------------------------------------------------------------
@@ -2295,10 +2372,13 @@ var
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
   begin
-    KeyNode.GetValueBinary(ValuePtr,ValueSize,False);
-    If Size < ValueSize then Result := Size
-      else Result := ValueSize;
-    Move(ValuePtr^,Buffer,Result); 
+    If KeyNode.GetValueBinary(ValuePtr,ValueSize,False) then
+      begin
+        If Size < ValueSize then Result := Size
+          else Result := ValueSize;
+        Move(ValuePtr^,Buffer,Result);
+      end
+    else Result := 0;
   end
 else Result := 0;
 end;
@@ -2311,10 +2391,11 @@ var
 begin
 If not fFileNode.FindKey(Section,Key,KeyNode) then
   begin
-    Ptr := nil;  
+    Ptr := nil;
     Result := 0;
   end
-else KeyNode.GetValueBinary(Ptr,Result,MakeCopy);
+else If not KeyNode.GetValueBinary(Ptr,Result,MakeCopy) then
+  Result := 0;
 end;
 
 //------------------------------------------------------------------------------
@@ -2334,11 +2415,14 @@ var
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
   begin
-    If ClearStream then
-      Stream.Size := 0;
-    KeyNode.GetValueBinary(ValuePtr,ValueSize,False);
-    Stream.WriteBuffer(ValuePtr^,ValueSize);
-    Result := Int64(ValueSize);
+    If KeyNode.GetValueBinary(ValuePtr,ValueSize,False) then
+      begin
+        If ClearStream then
+          Stream.Size := 0;
+        Stream.WriteBuffer(ValuePtr^,ValueSize);
+        Result := Int64(ValueSize);
+      end
+    else Result := 0;
   end
 else Result := 0;
 end;
