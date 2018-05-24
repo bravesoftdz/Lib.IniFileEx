@@ -382,7 +382,7 @@ var
 begin
 // scan string
 Temp := 0; 
-Quoted := FormatSettings.ForceQuote;
+Quoted := FormatSettings.ForceQuote or (Length(Str) <= 0);
 For i := 1 to Length(Str) do
   case Str[i] of
     #32:        // space

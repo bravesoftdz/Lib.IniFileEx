@@ -59,7 +59,7 @@ type
   protected
     // writing textual ini
     Function Text_WriteEmptyLine: TMemSize; virtual;
-    Function Text_WriteString(const Str: TIFXString): TMemSize; virtual;
+    Function Text_WriteString(const Str: TIFXString; LineBreak: Boolean = True): TMemSize; virtual;
     Function Text_WriteSection(SectionNode: TIFXSectionNode): TMemSize; virtual;
     Function Text_WriteKey(KeyNode: TIFXKeyNode): TMemSize; virtual;
     // reading textual ini
@@ -87,6 +87,7 @@ type
     Function ConstructCommentBlock(const CommentStr: TIFXString): TIFXString; virtual;
     Function ConstructSectionName(SectionNode: TIFXSectionNode): TIFXString; virtual;
     Function ConstructKeyValueLine(KeyNode: TIFXKeyNode): TIFXString; virtual;
+    Function PrepareInlineComment(const CommentStr: TIFXString): TIFXString; virtual;
     // writing to stream
     procedure WriteTextual(Stream: TStream); virtual;
     procedure ReadTextual(Stream: TStream); virtual;
@@ -118,6 +119,7 @@ uses
     UInt32    - signature (SECT)
     String[]  - section name
     String[]  - section comment
+    String[]  - section inline comment
     UInt32    - key count
     Key[]     - array of keys
 
@@ -125,6 +127,7 @@ uses
     UInt32    - signature (KEYV)
     String[]  - key name
     String[]  - key comment
+    String[]  - key inline comment
     UInt8     - value encoding
     UInt8     - value type
     []        - data (size depending on value type)
@@ -161,13 +164,16 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXParser.Text_WriteString(const Str: TIFXString): TMemSize;
+Function TIFXParser.Text_WriteString(const Str: TIFXString; LineBreak: Boolean = True): TMemSize;
 var
   TempStr:  UTF8String;
 begin
 If Length(Str) > 0 then
   begin
-    TempStr := IFXStrToUTF8(Str + fSettingsPtr^.IniFormat.LineBreak);
+    If LineBreak then
+      TempStr := IFXStrToUTF8(Str + fSettingsPtr^.IniFormat.LineBreak)
+    else
+      TempStr := IFXStrToUTF8(Str);
     If Length(TempStr) > 0 then
       Result := TMemSize(Stream_WriteBuffer(fStream,PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)))
     else
@@ -184,7 +190,8 @@ var
 begin
 Result := Text_WriteEmptyLine;
 Inc(Result,Text_WriteString(ConstructCommentBlock(SectionNode.Comment)));
-Inc(Result,Text_WriteString(ConstructSectionName(SectionNode)));
+Inc(Result,Text_WriteString(ConstructSectionName(SectionNode),Length(SectionNode.InlineComment) <= 0));
+Inc(Result,Text_WriteString(PrepareInlineComment(SectionNode.InlineComment)));
 For i := SectionNode.LowIndex to SectionNode.HighIndex do
   Inc(Result,Text_WriteKey(SectionNode[i]));
 end;
@@ -194,7 +201,8 @@ end;
 Function TIFXParser.Text_WriteKey(KeyNode: TIFXKeyNode): TMemSize;
 begin
 Result := Text_WriteString(ConstructCommentBlock(KeyNode.Comment));
-Inc(Result,Text_WriteString(ConstructKeyValueLine(KeyNode)));
+Inc(Result,Text_WriteString(ConstructKeyValueLine(KeyNode),Length(KeyNode.InlineComment) <= 0));
+Inc(Result,Text_WriteString(PrepareInlineComment(KeyNode.InlineComment)));
 end;
 
 //------------------------------------------------------------------------------
@@ -282,8 +290,10 @@ end;
 procedure TIFXParser.Text_ReadSectionLine;
 var
   TempStr:  TIFXString;
+  SectName: TIFXString;
   i,p:      TStrSize;
   Cntr:     Integer;
+  ICmnt:    TIFXString;
 begin
 TempStr := UTF8ToIFXStr(fIniStrings[fIniStrings.UserData]);
 // find closing character; if not present, discard line
@@ -297,8 +307,17 @@ For i := 1 to Length(TempStr) do
 If p > 0 then
   begin
     // extract section name from the line
-    TempStr := Copy(TempStr,2,p - 2);
-    i := fFileNode.IndexOfSection(TempStr);
+    SectName := Copy(TempStr,2,p - 2);
+    // search for an inline comment
+    ICmnt := '';
+    For i := (p + 1) to Length(TempStr) do
+      If TempStr[i] = fSettingsPtr.IniFormat.CommentChar then
+        begin
+          // everything after comment mark is assumed to be an inline comment
+          ICmnt := Copy(TempStr,i + 1,Length(TempStr) - i);
+          Break{For i};
+        end;
+    i := fFileNode.IndexOfSection(SectName);
     If i >= 0 then
       // section of this name is already present
       case fSettingsPtr^.DuplicityBehavior of
@@ -306,34 +325,37 @@ If p > 0 then
           begin
             fCurrentSectionNode := fFileNode[i];
             fCurrentSectionNode.Comment := Text_ConsumeLastComment;
+            fCurrentSectionNode.InlineComment := ICmnt;
           end;
         idbRenameOld:
           begin
-            If fFileNode.IndexOfSection(TempStr + fSettingsPtr^.DuplicityRenameOldStr) >= 0 then
+            If fFileNode.IndexOfSection(SectName + fSettingsPtr^.DuplicityRenameOldStr) >= 0 then
               begin
                 Cntr := 0;
-                while fFileNode.IndexOfSection(TempStr + fSettingsPtr^.DuplicityRenameOldStr +
+                while fFileNode.IndexOfSection(SectName + fSettingsPtr^.DuplicityRenameOldStr +
                   StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
-                fFileNode[i].NameStr := TempStr + fSettingsPtr^.DuplicityRenameOldStr +
+                fFileNode[i].NameStr := SectName + fSettingsPtr^.DuplicityRenameOldStr +
                   StrToIFXStr(IntToStr(Cntr));
               end
-            else fFileNode[i].NameStr := TempStr + fSettingsPtr^.DuplicityRenameOldStr;
-            fCurrentSectionNode := TIFXSectionNode.Create(TempStr,fFileNode.SettingsPtr);
+            else fFileNode[i].NameStr := SectName + fSettingsPtr^.DuplicityRenameOldStr;
+            fCurrentSectionNode := TIFXSectionNode.Create(SectName,fFileNode.SettingsPtr);
             fCurrentSectionNode.Comment := Text_ConsumeLastComment;
+            fCurrentSectionNode.InlineComment := ICmnt;
             fFileNode.AddSectionNode(fCurrentSectionNode);
           end;
         idbRenameNew:
           begin
-            If fFileNode.IndexOfSection(TempStr + fSettingsPtr^.DuplicityRenameNewStr) >= 0 then
+            If fFileNode.IndexOfSection(SectName + fSettingsPtr^.DuplicityRenameNewStr) >= 0 then
               begin
                 Cntr := 0;
-                while fFileNode.IndexOfSection(TempStr + fSettingsPtr^.DuplicityRenameNewStr +
+                while fFileNode.IndexOfSection(SectName + fSettingsPtr^.DuplicityRenameNewStr +
                   StrToIFXStr(IntToStr(Cntr))) >= 0 do Inc(Cntr);
-                TempStr := TempStr + fSettingsPtr^.DuplicityRenameNewStr + StrToIFXStr(IntToStr(Cntr));
+                SectName := SectName + fSettingsPtr^.DuplicityRenameNewStr + StrToIFXStr(IntToStr(Cntr));
               end
-            else TempStr := TempStr + fSettingsPtr^.DuplicityRenameNewStr;
-            fCurrentSectionNode := TIFXSectionNode.Create(TempStr,fFileNode.SettingsPtr);
+            else SectName := SectName + fSettingsPtr^.DuplicityRenameNewStr;
+            fCurrentSectionNode := TIFXSectionNode.Create(SectName,fFileNode.SettingsPtr);
             fCurrentSectionNode.Comment := Text_ConsumeLastComment;
+            fCurrentSectionNode.InlineComment := ICmnt;
             fFileNode.AddSectionNode(fCurrentSectionNode);
           end;
       else
@@ -344,8 +366,9 @@ If p > 0 then
     else
       begin
         // section of this name does not yet exist, create node and add it
-        fCurrentSectionNode := TIFXSectionNode.Create(TempStr,fFileNode.SettingsPtr);
+        fCurrentSectionNode := TIFXSectionNode.Create(SectName,fFileNode.SettingsPtr);
         fCurrentSectionNode.Comment := Text_ConsumeLastComment;
+        fCurrentSectionNode.InlineComment := ICmnt;
         fFileNode.AddSectionNode(fCurrentSectionNode);
       end;
     fLastTextLineType := itltSection;
@@ -363,6 +386,46 @@ var
   KeyCmnt:  TIFXString;
   KeyNode:  TIFXKeyNode;
   Cntr:     Integer;
+  ICmnt:    TIFXString;
+
+  Function ExtractInlineComment(var FromStr: TIFXString): TIFXSTring;
+  var
+    ii:       TStrSize;
+    Quoted:   Boolean;
+    Escaped:  Boolean;
+    AfterVal: Boolean;
+  begin
+    Result := '';
+    If Length(FromStr) > 0 then
+      begin
+        Quoted := False;
+        Escaped := False;
+        AfterVal := False;
+        For ii := 1 to Length(FromStr) do
+          begin
+            If (FromStr[ii] = fSettingsPtr.IniFormat.EscapeChar) and not Escaped then
+              Escaped := True
+            else If (FromStr[ii] = fSettingsPtr.IniFormat.QuoteChar) and not Escaped and not AfterVal then
+              begin
+                If Quoted then
+                  AfterVal := True;
+                Quoted := not Quoted;
+                Escaped := False;
+              end
+            else If (FromStr[ii] = fSettingsPtr.IniFormat.CommentChar) and not Quoted then
+              begin
+                // everything after comment mark is assumed to be an inline comment
+                Result := Copy(FromStr,ii + 1,Length(FromStr) - ii);
+                SetLength(FromStr,ii - 1);
+                FromStr := IFXTrimStr(FromStr);
+                Break{For ii};
+              end
+            else
+              Escaped := False;
+          end;
+      end;
+  end;
+
 begin
 TempStr := UTF8ToIFXStr(fIniStrings[fIniStrings.UserData]);
 // get position of value delimiter
@@ -375,10 +438,12 @@ For i := 1 to Length(TempStr) do
     end;
 If p > 0 then
   begin
-    // everything in front of delimiter is key, everything behind is value
+    // everything in front of delimiter is key, everything behind is a value and potentially inline comment
     KeyName := IFXTrimStr(Copy(TempStr,1,p - 1),fSettingsPtr^.IniFormat.WhiteSpaceChar);
     TempStr := IFXTrimStr(Copy(TempStr,p + 1,Length(TempStr) - p),fSettingsPtr^.IniFormat.WhiteSpaceChar);
     KeyCmnt := Text_ConsumeLastComment;
+    // search for an inline comment
+    ICmnt := ExtractInlineComment(TempStr);    
     If not Assigned(fCurrentSectionNode) then
       Text_CreateEmptyNameSection;
     i := fCurrentSectionNode.IndexOfKey(KeyName);
@@ -388,6 +453,7 @@ If p > 0 then
         idbReplace:
           begin
             fCurrentSectionNode[i].Comment := KeyCmnt;
+            fCurrentSectionNode[i].InlineComment := ICmnt;
             fCurrentSectionNode[i].ValueStr := TempStr;
           end;
         idbRenameOld:
@@ -403,6 +469,7 @@ If p > 0 then
             else fCurrentSectionNode[i].NameStr := KeyName + fSettingsPtr^.DuplicityRenameOldStr;
             KeyNode := TIFXKeyNode.Create(KeyName,fCurrentSectionNode.SettingsPtr);
             KeyNode.Comment := KeyCmnt;
+            KeyNode.InlineComment := ICmnt;
             KeyNode.ValueStr := TempStr;
             fCurrentSectionNode.AddKeyNode(KeyNode);
           end;
@@ -418,6 +485,7 @@ If p > 0 then
             else KeyName := KeyName + fSettingsPtr^.DuplicityRenameNewStr;
             KeyNode := TIFXKeyNode.Create(KeyName,fCurrentSectionNode.SettingsPtr);
             KeyNode.Comment := KeyCmnt;
+            KeyNode.InlineComment := ICmnt;
             KeyNode.ValueStr := TempStr;
             fCurrentSectionNode.AddKeyNode(KeyNode);
           end;
@@ -429,6 +497,7 @@ If p > 0 then
       begin
         KeyNode := TIFXKeyNode.Create(KeyName,fCurrentSectionNode.SettingsPtr);
         KeyNode.Comment := KeyCmnt;
+        KeyNode.InlineComment := ICmnt;
         KeyNode.ValueStr := TempStr;
         fCurrentSectionNode.AddKeyNode(KeyNode);
       end;
@@ -461,6 +530,7 @@ begin
 Result := Stream_WriteUInt32(fStream,IFX_BINI_SIGNATURE_SECTION);
 Inc(Result,Binary_0000_WriteString(SectionNode.NameStr));
 Inc(Result,Binary_0000_WriteString(SectionNode.Comment));
+Inc(Result,Binary_0000_WriteString(SectionNode.InlineComment));
 Inc(Result,Stream_WriteUInt32(fStream,SectionNode.KeyCount));
 For i := SectionNode.LowIndex to SectionNode.HighIndex do
   Inc(Result,Binary_0000_WriteKey(SectionNode[i]));
@@ -473,6 +543,7 @@ begin
 Result := Stream_WriteUInt32(fStream,IFX_BINI_SIGNATURE_KEY);
 Inc(Result,Binary_0000_WriteString(KeyNode.NameStr));
 Inc(Result,Binary_0000_WriteString(KeyNode.Comment));
+Inc(Result,Binary_0000_WriteString(KeyNode.InlineComment));
 Inc(Result,Stream_WriteUInt8(fStream,UInt8(IFXValueEncodingToByte(KeyNode.ValueEncoding))));
 Inc(Result,Stream_WriteUInt8(fStream,UInt8(IFXValueTypeToByte(KeyNode.ValueType))));
 case KeyNode.ValueType of
@@ -563,6 +634,7 @@ try
                   SectionNode.Free;
                   SectionNode := fFileNode[i];
                   SectionNode.Comment := Binary_0000_ReadString;
+                  SectionNode.InlineComment := Binary_0000_ReadString;
                   Result := False;
                 end;
               idbRenameOld:
@@ -570,6 +642,7 @@ try
                   // use the new node, rename the old one
                   SectionNode.NameStr := SectName;
                   SectionNode.Comment := Binary_0000_ReadString;
+                  SectionNode.InlineComment := Binary_0000_ReadString;
                   If fFileNode.IndexOfSection(SectName + fSettingsPtr^.DuplicityRenameOldStr) >= 0 then
                     begin
                       Cntr := 0;
@@ -593,13 +666,15 @@ try
                     end
                   else SectionNode.NameStr := SectName + fSettingsPtr^.DuplicityRenameNewStr;
                   SectionNode.Comment := Binary_0000_ReadString;
+                  SectionNode.InlineComment := Binary_0000_ReadString;
                 end;
             else
               {idbDrop}
-              // discard created node, use the one already present, discard comment
+              // discard created node, use the one already present, discard comments
               SectionNode.Free;
               SectionNode := fFileNode[i];
-              Binary_0000_ReadString;
+              Binary_0000_ReadString; // comment
+              Binary_0000_ReadString; // inline comment
               Result := False;
             end
           else
@@ -607,6 +682,7 @@ try
               // section is not yet in the file
               SectionNode.NameStr := SectName;
               SectionNode.Comment := Binary_0000_ReadString;
+              SectionNode.InlineComment := Binary_0000_ReadString;
             end;
           If (fStream.Size - fStream.Position) >= SizeOf(UInt32) then
             begin
@@ -706,6 +782,7 @@ try
               KeyNode.NameStr := KeyName;
             end;
           KeyNode.Comment := Binary_0000_ReadString;
+          KeyNode.InlineComment := Binary_0000_ReadString;
           KeyNode.ValueEncoding := IFXByteToValueEncoding(Stream_ReadUInt8(fStream));
           ValueType := IFXByteToValueType(Stream_ReadUInt8(fStream));
           // read value data to temporary storage
@@ -909,6 +986,29 @@ If fSettingsPtr^.IniFormat.KeyWhiteSpace then
     Inc(Temp{WhiteSpaceChar});
   end;
 Move(KeyNode.ValueStr[1],Result[Temp],Length(KeyNode.ValueStr) * SizeOf(TIFXChar));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIFXParser.PrepareInlineComment(const CommentStr: TIFXString): TIFXString;
+var
+  i,ResPos:  TStrSize;
+begin
+If Length(CommentStr) > 0 then
+  begin
+    SetLength(Result,Length(CommentStr) + 2);
+    Result[1] := fSettingsPtr^.IniFormat.WhiteSpaceChar;
+    Result[2] := fSettingsPtr^.IniFormat.CommentChar;
+    ResPos := 3;
+    For i := 1 to Length(CommentStr) do
+      If (Ord(CommentStr[i]) >= 32) and (CommentStr[i] <> fSettingsPtr^.IniFormat.CommentChar) then
+        begin
+          Result[ResPos] := CommentStr[i];
+          Inc(ResPos);
+        end;
+    SetLength(Result,ResPos - 1);
+  end
+else Result := '';
 end;
 
 //------------------------------------------------------------------------------

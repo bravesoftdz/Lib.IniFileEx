@@ -111,10 +111,14 @@ type
     Function GetFileComment: TIFXString; virtual;
     Function GetFileCommentStr: String; virtual;
     Function GetSectionComment(const Section: TIFXString): TIFXString;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function GetSectionInlineComment(const Section: TIFXString): TIFXString;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     Function GetKeyComment(const Section, Key: TIFXString): TIFXString;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function GetKeyInlineComment(const Section, Key: TIFXString): TIFXString;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure SetFileComment(const Text: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure SetSectionComment(const Section: TIFXString; const Text: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    procedure SetSectionInlineComment(const Section: TIFXString; const Text: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure SetKeyComment(const Section, Key: TIFXString; const Text: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    procedure SetKeyInlineComment(const Section, Key: TIFXString; const Text: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure RemoveFileComment; virtual;
     procedure RemoveSectionComment(const Section: TIFXString; RemoveKeysComments: Boolean = False);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure RemoveKeyComment(const Section, Key: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
@@ -218,10 +222,14 @@ type
     procedure SortKeys(const Section: String); overload; virtual;
     // comments access
     Function GetSectionComment(const Section: String): String; overload; virtual;
+    Function GetSectionInlineComment(const Section: String): String; overload; virtual;
     Function GetKeyComment(const Section, Key: String): String; overload; virtual;
+    Function GetKeyInlineComment(const Section, Key: String): String; overload; virtual;
     procedure SetFileComment(const Text: String); overload; virtual;
     procedure SetSectionComment(const Section: String; const Text: String); overload; virtual;
+    procedure SetSectionInlineComment(const Section: String; const Text: String); overload; virtual;
     procedure SetKeyComment(const Section, Key: String; const Text: String); overload; virtual;
+    procedure SetKeyInlineComment(const Section, Key: String; const Text: String); overload; virtual;
     procedure RemoveSectionComment(const Section: String; RemoveKeysComments: Boolean = False); overload; virtual;
     procedure RemoveKeyComment(const Section, Key: String); overload; virtual;
     // mid-level properties access
@@ -1428,12 +1436,36 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TIniFileEx.GetSectionInlineComment(const Section: TIFXString): TIFXString;
+var
+  SectionNode:  TIFXSectionNode;
+begin
+If fFileNode.FindSection(Section,SectionNode) then
+  Result := SectionNode.InlineComment
+else
+  Result := '';
+end;
+
+//------------------------------------------------------------------------------
+
 Function TIniFileEx.GetKeyComment(const Section, Key: TIFXString): TIFXString;
 var
   KeyNode:  TIFXKeyNode;
 begin
 If fFileNode.FindKey(Section,Key,KeyNode) then
   Result := KeyNode.Comment
+else
+  Result := '';
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.GetKeyInlineComment(const Section, Key: TIFXString): TIFXString;
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If fFileNode.FindKey(Section,Key,KeyNode) then
+  Result := KeyNode.InlineComment
 else
   Result := '';
 end;
@@ -1459,6 +1491,17 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TIniFileEx.SetSectionInlineComment(const Section: TIFXString; const Text: TIFXString);
+var
+  SectionNode:  TIFXSectionNode;
+begin
+If not fSettings.ReadOnly then
+  If fFileNode.FindSection(Section,SectionNode) then
+    SectionNode.InlineComment := Text;
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TIniFileEx.SetKeyComment(const Section, Key: TIFXString; const Text: TIFXString);
 var
   KeyNode:  TIFXKeyNode;
@@ -1466,6 +1509,17 @@ begin
 If not fSettings.ReadOnly then
   If fFileNode.FindKey(Section,Key,KeyNode) then
     KeyNode.Comment := Text;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SetKeyInlineComment(const Section, Key: TIFXString; const Text: TIFXString);
+var
+  KeyNode:  TIFXKeyNode;
+begin
+If not fSettings.ReadOnly then
+  If fFileNode.FindKey(Section,Key,KeyNode) then
+    KeyNode.InlineComment := Text;
 end;
 
 //------------------------------------------------------------------------------
@@ -1487,9 +1541,13 @@ If not fSettings.ReadOnly then
   If fFileNode.FindSection(Section,SectionNode) then
     begin
       SectionNode.Comment := '';
+      SectionNode.InlineComment := '';
       If RemoveKeysComments then
         For i := SectionNode.LowIndex to SectionNode.HighIndex do
-          SectionNode[i].Comment := '';
+          begin
+            SectionNode[i].Comment := '';
+            SectionNode[i].InlineComment := '';
+          end;
     end;
 end;
 
@@ -1501,7 +1559,10 @@ var
 begin
 If not fSettings.ReadOnly then
   If fFileNode.FindKey(Section,Key,KeyNode) then
-    KeyNode.Comment := '';
+    begin
+      KeyNode.Comment := '';
+      KeyNode.InlineComment := '';
+    end;
 end;
 
 //------------------------------------------------------------------------------
@@ -2571,9 +2632,23 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TIniFileEx.GetSectionInlineComment(const Section: String): String;
+begin
+Result := IFXStrToStr(GetSectionInlineComment(StrToIFXStr(Section)));
+end;
+
+//------------------------------------------------------------------------------
+
 Function TIniFileEx.GetKeyComment(const Section, Key: String): String;
 begin
 Result := IFXStrToStr(GetKeyComment(StrToIFXStr(Section),StrToIFXStr(Key)));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.GetKeyInlineComment(const Section, Key: String): String;
+begin
+Result := IFXStrToStr(GetKeyInlineComment(StrToIFXStr(Section),StrToIFXStr(Key)));
 end;
 
 //------------------------------------------------------------------------------
@@ -2589,12 +2664,26 @@ procedure TIniFileEx.SetSectionComment(const Section: String; const Text: String
 begin
 SetSectionComment(StrToIFXStr(Section),StrToIFXStr(Text));
 end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SetSectionInlineComment(const Section: String; const Text: String);
+begin
+SetSectionInlineComment(StrToIFXStr(Section),StrToIFXStr(Text));
+end;
  
 //------------------------------------------------------------------------------
 
 procedure TIniFileEx.SetKeyComment(const Section, Key: String; const Text: String);
 begin
 SetKeyComment(StrToIFXStr(Section),StrToIFXStr(Key),StrToIFXStr(Text));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SetKeyInlineComment(const Section, Key: String; const Text: String);
+begin
+SetKeyInlineComment(StrToIFXStr(Section),StrToIFXStr(Key),StrToIFXStr(Text));
 end;
  
 //------------------------------------------------------------------------------

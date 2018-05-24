@@ -30,6 +30,7 @@ type
     fSettingsPtr:   PIFXSettings;
     fName:          TIFXHashedString;
     fComment:       TIFXString;
+    fInlineComment: TIFXString;
     fValueStr:      TIFXString;
     fValueEncoding: TIFXValueEncoding;
     fValueState:    TIFXValueState;
@@ -120,6 +121,7 @@ type
     property Name: TIFXHashedString read fName write fName;
     property NameStr: TIFXString read fName.Str write SetNameStr;
     property Comment: TIFXString read fComment write fComment;
+    property InlineComment: TIFXString read fInlineComment write fInlineComment;
     property ValueStr: TIFXString read GetValueStr write SetValueStr;
     property ValueEncoding: TIFXValueEncoding read fValueEncoding write SetValueEncoding;
     property ValueState: TIFXValueState read fValueState;
@@ -143,6 +145,7 @@ type
     fSettingsPtr:   PIFXSettings;
     fName:          TIFXHashedString;
     fComment:       TIFXString;
+    fInlineComment: TIFXString;
     fOnKeyCreate:   TIFXKeyNodeEvent;
     fOnKeyDestroy:  TIFXKeyNodeEvent;
     Function GetKey(Index: Integer): TIFXKeyNode;
@@ -175,6 +178,7 @@ type
     property Name: TIFXHashedString read fName write fName;
     property NameStr: TIFXString read fName.Str write SetNameStr;
     property Comment: TIFXString read fComment write fComment;
+    property InlineComment: TIFXString read fInlineComment write fInlineComment;
     property OnKeyCreate: TIFXKeyNodeEvent read fOnKeyCreate write fOnKeyCreate;
     property OnKeyDestroy: TIFXKeyNodeEvent read fOnKeyDestroy write fOnKeyDestroy;
   end;
@@ -1099,12 +1103,13 @@ constructor TIFXKeyNode.CreateCopy(SourceNode: TIFXKeyNode);
 var
   TempPtr:  Pointer;
 begin
-Create(SourceNode.NameStr,SourceNode.fSettingsPtr);
-fComment := SourceNode.fComment;
-fValueStr := SourceNode.fValueStr;
-fValueEncoding := SourceNode.fValueEncoding;
-fValueState := SourceNode.fValueState;
-fValueData := SourceNode.fValueData;
+Create(SourceNode.NameStr,SourceNode.SettingsPtr);
+fComment := SourceNode.Comment;
+fInlineComment := SourceNode.InlineComment;
+fValueStr := SourceNode.ValueStr;
+fValueEncoding := SourceNode.ValueEncoding;
+fValueState := SourceNode.ValueState;
+fValueData := SourceNode.ValueData;
 If (fValueData.ValueType = ivtBinary) and fValueData.BinaryValueOwned then
   begin
     GetMem(TempPtr,fValueData.BinaryValueSize);
@@ -1497,6 +1502,7 @@ var
 begin
 Create(SourceNode.NameStr,SourceNode.fSettingsPtr);
 fComment := SourceNode.Comment;
+fInlineComment := SourceNode.InlineComment;
 fOnKeyCreate := SourceNode.OnKeyCreate;
 fOnKeyDestroy := SourceNode.OnKeyDestroy;
 // copy all keys from source section
