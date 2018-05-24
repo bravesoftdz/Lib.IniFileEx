@@ -22,3 +22,9 @@
 {$ENDIF}
 
 {.$DEFINE AllowLowLevelAccess}
+
+{$DEFINE AllowDefaultStringOverloads}
+
+{$IF not Defined(Unicode) and Defined(AllowDefaultStringOverloads)}
+  {$DEFINE DefStrOverloads}
+{$IFEND}

@@ -83,48 +83,49 @@ type
     procedure Assign(Ini: TIniFileEx); virtual;
     procedure Append(Ini: TIniFileEx); virtual;
     // structure access
-    Function IndexOfSection(const Section: TIFXString): Integer; virtual;
+    Function IndexOfSection(const Section: TIFXString): Integer;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     Function IndexOfKey(const Section, Key: TIFXString): TIFXNodeIndices; overload; virtual;
     Function IndexOfKey(SectionIndex: Integer; const Key: TIFXString): Integer; overload; virtual;
-    Function SectionExists(const Section: TIFXString): Boolean; virtual;
+    Function SectionExists(const Section: TIFXString): Boolean;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     Function KeyExists(const Section, Key: TIFXString): Boolean; overload; virtual;
     Function KeyExists(SectionIndex: Integer; const Key: TIFXString): Boolean; overload; virtual;
-    procedure AddSection(const Section: TIFXString); virtual;
+    procedure AddSection(const Section: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure AddKey(const Section, Key: TIFXString); overload; virtual;
     procedure AddKey(SectionIndex: Integer; const Key: TIFXString); overload; virtual;
-    procedure DeleteSection(const Section: TIFXString); virtual;
+    procedure DeleteSection(const Section: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure DeleteKey(const Section, Key: TIFXString); overload; virtual;
     procedure DeleteKey(SectionIndex: Integer; const Key: TIFXString); overload; virtual;
-    procedure ExchangeSections(const Section1, Section2: TIFXString); virtual;
+    procedure ExchangeSections(const Section1, Section2: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure ExchangeKeys(const Section, Key1, Key2: TIFXString); overload; virtual;
     procedure ExchangeKeys(SectionIndex: Integer; const Key1, Key2: TIFXString); overload; virtual;
-    Function CopySection(const SourceSection, DestinationSection: TIFXString): Boolean; virtual;
-    Function CopyKey(const SourceSection, DestinationSection, SourceKey, DestinationKey: TIFXString): Boolean; virtual;
+    Function CopySection(const SourceSection, DestinationSection: TIFXString): Boolean;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function CopyKey(const SourceSection, DestinationSection, SourceKey, DestinationKey: TIFXString): Boolean;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure Clear; virtual;
     procedure SortSections; virtual;
-    procedure SortSection(const Section: TIFXString); virtual;
+    procedure SortSection(const Section: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure SortKeys(const Section: TIFXString); overload; virtual;
     procedure SortKeys; overload; virtual;
     procedure Sort; virtual;
-    // comments
+    // comments access
     Function GetFileComment: TIFXString; virtual;
-    Function GetSectionComment(const Section: TIFXString): TIFXString; virtual;
-    Function GetKeyComment(const Section, Key: TIFXString): TIFXString; virtual;
-    procedure SetFileComment(const Text: TIFXString); virtual;
-    procedure SetSectionComment(const Section: TIFXString; const Text: TIFXString); virtual;
-    procedure SetKeyComment(const Section, Key: TIFXString; const Text: TIFXString); virtual;
+    Function GetFileCommentStr: String; virtual;
+    Function GetSectionComment(const Section: TIFXString): TIFXString;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function GetKeyComment(const Section, Key: TIFXString): TIFXString;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    procedure SetFileComment(const Text: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    procedure SetSectionComment(const Section: TIFXString; const Text: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    procedure SetKeyComment(const Section, Key: TIFXString; const Text: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure RemoveFileComment; virtual;
-    procedure RemoveSectionComment(const Section: TIFXString; RemoveKeysComments: Boolean = False); virtual;
-    procedure RemoveKeyComment(const Section, Key: TIFXString); virtual;
+    procedure RemoveSectionComment(const Section: TIFXString; RemoveKeysComments: Boolean = False);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    procedure RemoveKeyComment(const Section, Key: TIFXString);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure RemoveAllComment; virtual;
     // mid-level properties access
-    Function GetValueState(const Section, Key: TIFXString): TIFXValueState; virtual;
-    Function GetValueEncoding(const Section, Key: TIFXString): TIFXValueEncoding; virtual;
-    procedure SetValueEncoding(const Section, Key: TIFXString; Encoding: TIFXValueEncoding); virtual;
-    Function GetValueType(const Section, Key: TIFXString): TIFXValueType; virtual;
+    Function GetValueState(const Section, Key: TIFXString): TIFXValueState;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function GetValueEncoding(const Section, Key: TIFXString): TIFXValueEncoding;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    procedure SetValueEncoding(const Section, Key: TIFXString; Encoding: TIFXValueEncoding);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function GetValueType(const Section, Key: TIFXString): TIFXValueType;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     procedure ReadSections(Strings: TStrings); virtual;
-    procedure ReadSection(const Section: TIFXString; Strings: TStrings); virtual;    
-    procedure ReadSectionValues(const Section: TIFXString; Strings: TStrings); virtual;
+    procedure ReadSection(const Section: TIFXString; Strings: TStrings);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    procedure ReadSectionValues(const Section: TIFXString; Strings: TStrings);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     // values writing
     procedure WriteBool(const Section, Key: TIFXString; Value: Boolean); overload; virtual;
     procedure WriteBool(const Section, Key: TIFXString; Value: Boolean; Encoding: TIFXValueEncoding); overload; virtual;
@@ -169,29 +170,134 @@ type
     procedure WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream); overload; virtual;
     procedure WriteBinaryStream(const Section, Key: TIFXString; Stream: TStream; Encoding: TIFXValueEncoding); overload; virtual;
     // values reading
-    procedure PrepareReading(const Section, Key: TIFXString; ValueType: TIFXValueType); virtual;
-    Function ReadBool(const Section, Key: TIFXString; Default: Boolean = False): Boolean; virtual;
-    Function ReadInt8(const Section, Key: TIFXString; Default: Int8 = 0): Int8; virtual;
-    Function ReadUInt8(const Section, Key: TIFXString; Default: UInt8 = 0): UInt8; virtual;
-    Function ReadInt16(const Section, Key: TIFXString; Default: Int16 = 0): Int16; virtual;
-    Function ReadUInt16(const Section, Key: TIFXString; Default: UInt16 = 0): UInt16; virtual;
-    Function ReadInt32(const Section, Key: TIFXString; Default: Int32 = 0): Int32; virtual;
-    Function ReadUInt32(const Section, Key: TIFXString; Default: UInt32 = 0): UInt32; virtual;
-    Function ReadInt64(const Section, Key: TIFXString; Default: Int64 = 0): Int64; virtual;
-    Function ReadUInt64(const Section, Key: TIFXString; Default: UInt64 = 0): UInt64; virtual;
-    Function ReadInteger(const Section, Key: TIFXString; Default: Integer = 0): Integer; virtual;
-    Function ReadFloat32(const Section, Key: TIFXString; Default: Float32 = 0.0): Float32; virtual;
-    Function ReadFloat64(const Section, Key: TIFXString; Default: Float64 = 0.0): Float64; virtual;
-    Function ReadFloat(const Section, Key: TIFXString; Default: Double = 0.0): Double; virtual;
-    Function ReadTime(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime; virtual;
-    Function ReadDate(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime; virtual;
-    Function ReadDateTime(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime; virtual;
-    Function ReadString(const Section, Key: TIFXString; Default: String = ''): String; virtual;
-    Function ReadBinarySize(const Section, Key: TIFXString): TMemSize; virtual;
-    Function ReadBinaryBuffer(const Section, Key: TIFXString; var Buffer; Size: TMemSize): TMemSize; virtual;
+    procedure PrepareReading(const Section, Key: TIFXString; ValueType: TIFXValueType);{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadBool(const Section, Key: TIFXString; Default: Boolean = False): Boolean;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadInt8(const Section, Key: TIFXString; Default: Int8 = 0): Int8;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadUInt8(const Section, Key: TIFXString; Default: UInt8 = 0): UInt8;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadInt16(const Section, Key: TIFXString; Default: Int16 = 0): Int16;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadUInt16(const Section, Key: TIFXString; Default: UInt16 = 0): UInt16;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadInt32(const Section, Key: TIFXString; Default: Int32 = 0): Int32;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadUInt32(const Section, Key: TIFXString; Default: UInt32 = 0): UInt32;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadInt64(const Section, Key: TIFXString; Default: Int64 = 0): Int64;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadUInt64(const Section, Key: TIFXString; Default: UInt64 = 0): UInt64;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadInteger(const Section, Key: TIFXString; Default: Integer = 0): Integer;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadFloat32(const Section, Key: TIFXString; Default: Float32 = 0.0): Float32;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadFloat64(const Section, Key: TIFXString; Default: Float64 = 0.0): Float64;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadFloat(const Section, Key: TIFXString; Default: Double = 0.0): Double;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadTime(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadDate(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadDateTime(const Section, Key: TIFXString; Default: TDateTime = 0.0): TDateTime;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadString(const Section, Key: TIFXString; Default: String = ''): String;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadBinarySize(const Section, Key: TIFXString): TMemSize;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+    Function ReadBinaryBuffer(const Section, Key: TIFXString; var Buffer; Size: TMemSize): TMemSize;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
     Function ReadBinaryMemory(const Section, Key: TIFXString; out Ptr: Pointer; MakeCopy: Boolean = False): TMemSize; overload; virtual;
     Function ReadBinaryMemory(const Section, Key: TIFXString; Ptr: Pointer; Size: TMemSize): TMemSize; overload; virtual;
-    Function ReadBinaryStream(const Section, Key: TIFXString; Stream: TStream; ClearStream: Boolean = False): Int64; virtual;
+    Function ReadBinaryStream(const Section, Key: TIFXString; Stream: TStream; ClearStream: Boolean = False): Int64;{$IFDEF DefStrOverloads} overload;{$ENDIF} virtual;
+  {$IFDEF DefStrOverloads}
+    // default string overloads
+    // structure access
+    Function IndexOfSection(const Section: String): Integer; overload; virtual;
+    Function IndexOfKey(const Section, Key: String): TIFXNodeIndices; overload; virtual;
+    Function IndexOfKey(SectionIndex: Integer; const Key: String): Integer; overload; virtual;
+    Function SectionExists(const Section: String): Boolean; overload; virtual;
+    Function KeyExists(const Section, Key: String): Boolean; overload; virtual;
+    Function KeyExists(SectionIndex: Integer; const Key: String): Boolean; overload; virtual;
+    procedure AddSection(const Section: String); overload; virtual;
+    procedure AddKey(const Section, Key: String); overload; virtual;
+    procedure AddKey(SectionIndex: Integer; const Key: String); overload; virtual;
+    procedure DeleteSection(const Section: String); overload; virtual;
+    procedure DeleteKey(const Section, Key: String); overload; virtual;
+    procedure DeleteKey(SectionIndex: Integer; const Key: String); overload; virtual;
+    procedure ExchangeSections(const Section1, Section2: String); overload; virtual;
+    procedure ExchangeKeys(const Section, Key1, Key2: String); overload; virtual;
+    procedure ExchangeKeys(SectionIndex: Integer; const Key1, Key2: String); overload; virtual;
+    Function CopySection(const SourceSection, DestinationSection: String): Boolean; overload; virtual;
+    Function CopyKey(const SourceSection, DestinationSection, SourceKey, DestinationKey: String): Boolean; overload; virtual;
+    procedure SortSection(const Section: String); overload; virtual;
+    procedure SortKeys(const Section: String); overload; virtual;
+    // comments access
+    Function GetSectionComment(const Section: String): String; overload; virtual;
+    Function GetKeyComment(const Section, Key: String): String; overload; virtual;
+    procedure SetFileComment(const Text: String); overload; virtual;
+    procedure SetSectionComment(const Section: String; const Text: String); overload; virtual;
+    procedure SetKeyComment(const Section, Key: String; const Text: String); overload; virtual;
+    procedure RemoveSectionComment(const Section: String; RemoveKeysComments: Boolean = False); overload; virtual;
+    procedure RemoveKeyComment(const Section, Key: String); overload; virtual;
+    // mid-level properties access
+    Function GetValueState(const Section, Key: String): TIFXValueState; overload; virtual;
+    Function GetValueEncoding(const Section, Key: String): TIFXValueEncoding; overload; virtual;
+    procedure SetValueEncoding(const Section, Key: String; Encoding: TIFXValueEncoding); overload; virtual;
+    Function GetValueType(const Section, Key: String): TIFXValueType; overload; virtual;
+    procedure ReadSection(const Section: String; Strings: TStrings); overload; virtual;
+    procedure ReadSectionValues(const Section: String; Strings: TStrings); overload; virtual;
+    // values writing
+    procedure WriteBool(const Section, Key: String; Value: Boolean); overload; virtual;
+    procedure WriteBool(const Section, Key: String; Value: Boolean; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteInt8(const Section, Key: String; Value: Int8); overload; virtual;
+    procedure WriteInt8(const Section, Key: String; Value: Int8; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteUInt8(const Section, Key: String; Value: UInt8); overload; virtual;
+    procedure WriteUInt8(const Section, Key: String; Value: UInt8; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteInt16(const Section, Key: String; Value: Int16); overload; virtual;
+    procedure WriteInt16(const Section, Key: String; Value: Int16; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteUInt16(const Section, Key: String; Value: UInt16); overload; virtual;
+    procedure WriteUInt16(const Section, Key: String; Value: UInt16; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteInt32(const Section, Key: String; Value: Int32); overload; virtual;
+    procedure WriteInt32(const Section, Key: String; Value: Int32; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteUInt32(const Section, Key: String; Value: UInt32); overload; virtual;
+    procedure WriteUInt32(const Section, Key: String; Value: UInt32; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteInt64(const Section, Key: String; Value: Int64); overload; virtual;
+    procedure WriteInt64(const Section, Key: String; Value: Int64; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteUInt64(const Section, Key: String; Value: UInt64); overload; virtual;
+    procedure WriteUInt64(const Section, Key: String; Value: UInt64; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteInteger(const Section, Key: String; Value: Integer); overload; virtual;
+    procedure WriteInteger(const Section, Key: String; Value: Integer; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteFloat32(const Section, Key: String; Value: Float32); overload; virtual;
+    procedure WriteFloat32(const Section, Key: String; Value: Float32; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteFloat64(const Section, Key: String; Value: Float64); overload; virtual;
+    procedure WriteFloat64(const Section, Key: String; Value: Float64; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteFloat(const Section, Key: String; Value: Double); overload; virtual;
+    procedure WriteFloat(const Section, Key: String; Value: Double; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteTime(const Section, Key: String; Value: TDateTime); overload; virtual;
+    procedure WriteTime(const Section, Key: String; Value: TDateTime; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteDate(const Section, Key: String; Value: TDateTime); overload; virtual;
+    procedure WriteDate(const Section, Key: String; Value: TDateTime; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteDateTime(const Section, Key: String; Value: TDateTime); overload; virtual;
+    procedure WriteDateTime(const Section, Key: String; Value: TDateTime; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteString(const Section, Key: String; const Value: String); overload; virtual;
+    procedure WriteString(const Section, Key: String; const Value: String; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteBinaryBuffer(const Section, Key: String; const Buffer; Size: TMemSize; MakeCopy: Boolean = False); overload; virtual;
+    procedure WriteBinaryBuffer(const Section, Key: String; const Buffer; Size: TMemSize; Encoding: TIFXValueEncoding; MakeCopy: Boolean = False); overload; virtual;
+    procedure WriteBinaryMemory(const Section, Key: String; Value: Pointer; Size: TMemSize; MakeCopy: Boolean = False); overload; virtual;
+    procedure WriteBinaryMemory(const Section, Key: String; Value: Pointer; Size: TMemSize; Encoding: TIFXValueEncoding; MakeCopy: Boolean = False); overload; virtual;
+    procedure WriteBinaryStream(const Section, Key: String; Stream: TStream; Position, Count: Int64); overload; virtual;
+    procedure WriteBinaryStream(const Section, Key: String; Stream: TStream; Position, Count: Int64; Encoding: TIFXValueEncoding); overload; virtual;
+    procedure WriteBinaryStream(const Section, Key: String; Stream: TStream); overload; virtual;
+    procedure WriteBinaryStream(const Section, Key: String; Stream: TStream; Encoding: TIFXValueEncoding); overload; virtual;
+    // values reading
+    procedure PrepareReading(const Section, Key: String; ValueType: TIFXValueType); overload; virtual;
+    Function ReadBool(const Section, Key: String; Default: Boolean = False): Boolean; overload; virtual;
+    Function ReadInt8(const Section, Key: String; Default: Int8 = 0): Int8; overload; virtual;
+    Function ReadUInt8(const Section, Key: String; Default: UInt8 = 0): UInt8; overload; virtual;
+    Function ReadInt16(const Section, Key: String; Default: Int16 = 0): Int16; overload; virtual;
+    Function ReadUInt16(const Section, Key: String; Default: UInt16 = 0): UInt16; overload; virtual;
+    Function ReadInt32(const Section, Key: String; Default: Int32 = 0): Int32; overload; virtual;
+    Function ReadUInt32(const Section, Key: String; Default: UInt32 = 0): UInt32; overload; virtual;
+    Function ReadInt64(const Section, Key: String; Default: Int64 = 0): Int64; overload; virtual;
+    Function ReadUInt64(const Section, Key: String; Default: UInt64 = 0): UInt64; overload; virtual;
+    Function ReadInteger(const Section, Key: String; Default: Integer = 0): Integer; overload; virtual;
+    Function ReadFloat32(const Section, Key: String; Default: Float32 = 0.0): Float32; overload; virtual;
+    Function ReadFloat64(const Section, Key: String; Default: Float64 = 0.0): Float64; overload; virtual;
+    Function ReadFloat(const Section, Key: String; Default: Double = 0.0): Double; overload; virtual;
+    Function ReadTime(const Section, Key: String; Default: TDateTime = 0.0): TDateTime; overload; virtual;
+    Function ReadDate(const Section, Key: String; Default: TDateTime = 0.0): TDateTime; overload; virtual;
+    Function ReadDateTime(const Section, Key: String; Default: TDateTime = 0.0): TDateTime; overload; virtual;
+    Function ReadString(const Section, Key: String; Default: String = ''): String; overload; virtual;
+    Function ReadBinarySize(const Section, Key: String): TMemSize; overload; virtual;
+    Function ReadBinaryBuffer(const Section, Key: String; var Buffer; Size: TMemSize): TMemSize; overload; virtual;
+    Function ReadBinaryMemory(const Section, Key: String; out Ptr: Pointer; MakeCopy: Boolean = False): TMemSize; overload; virtual;
+    Function ReadBinaryMemory(const Section, Key: String; Ptr: Pointer; Size: TMemSize): TMemSize; overload; virtual;
+    Function ReadBinaryStream(const Section, Key: String; Stream: TStream; ClearStream: Boolean = False): Int64; overload; virtual;
+  {$ENDIF}
   {$IFDEF AllowLowLevelAccess}
     // low level stuff
     Function GetSectionNode(const Section: TIFXString): TIFXSectionNode; virtual;
@@ -201,7 +307,7 @@ type
     property FileNode: TIFXFileNode read fFileNode;
     property Parser: TIFXParser read fParser; 
     property SectionNodes[SectionIndex: Integer]: TIFXSectionNode read GetSectionNodeIdx;
-    property KeyNodes[SectionIndex, KeyIndex: Integer]: TIFXKeyNode read GetKeyNodeIdx;
+    property KeyNodes[SectionIndex, KeyIndex: Integer]: TIFXKeyNode read GetKeyNodeIdx; default;
     property OnSectionCreate: TIFXSectionNodeEvent read fOnSectionCreate write fOnSectionCreate;
     property OnSectionDestroy: TIFXSectionNodeEvent read fOnSectionDestroy write fOnSectionDestroy;
     property OnKeyCreate: TIFXKeyNodeEvent read fOnKeyCreate write fOnKeyCreate;
@@ -1262,6 +1368,13 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TIniFileEx.GetFileCommentStr: String;
+begin
+Result := IFXStrToStr(fFileNode.Comment);
+end;
+
+//------------------------------------------------------------------------------
+
 Function TIniFileEx.GetSectionComment(const Section: TIFXString): TIFXString;
 var
   SectionNode:  TIFXSectionNode;
@@ -2230,8 +2343,692 @@ If fFileNode.FindKey(Section,Key,KeyNode) then
 else Result := 0;
 end;
 
-{$IFDEF AllowLowLevelAccess}
 //------------------------------------------------------------------------------
+
+{$IFDEF DefStrOverloads}
+
+Function TIniFileEx.IndexOfSection(const Section: String): Integer;
+begin
+Result := IndexOfSection(StrToIFXStr(Section));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.IndexOfKey(const Section, Key: String): TIFXNodeIndices;
+begin
+Result := IndexOfKey(StrToIFXStr(Section),StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.IndexOfKey(SectionIndex: Integer; const Key: String): Integer;
+begin
+Result := IndexOfKey(SectionIndex,StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.SectionExists(const Section: String): Boolean;
+begin
+Result := SectionExists(StrToIFXStr(Section));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.KeyExists(const Section, Key: String): Boolean;
+begin
+Result := KeyExists(StrToIFXStr(Section),StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.KeyExists(SectionIndex: Integer; const Key: String): Boolean;
+begin
+Result := KeyExists(SectionIndex,StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AddSection(const Section: String);
+begin
+AddSection(StrToIFXStr(Section));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AddKey(const Section, Key: String);
+begin
+AddKey(StrToIFXStr(Section),StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.AddKey(SectionIndex: Integer; const Key: String);
+begin
+AddKey(SectionIndex,StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.DeleteSection(const Section: String);
+begin
+DeleteSection(StrToIFXStr(Section));
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.DeleteKey(const Section, Key: String);
+begin
+DeleteKey(StrToIFXStr(Section),StrToIFXStr(Key));
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.DeleteKey(SectionIndex: Integer; const Key: String);
+begin
+DeleteKey(SectionIndex,StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.ExchangeSections(const Section1, Section2: String);
+begin
+ExchangeSections(StrToIFXStr(Section1),StrToIFXStr(Section2));
+end;
+   
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.ExchangeKeys(const Section, Key1, Key2: String);
+begin
+ExchangeKeys(StrToIFXStr(Section),StrToIFXStr(Key1),StrToIFXStr(Key2));
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.ExchangeKeys(SectionIndex: Integer; const Key1, Key2: String);
+begin
+ExchangeKeys(SectionIndex,StrToIFXStr(Key1),StrToIFXStr(Key2));
+end;
+ 
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.CopySection(const SourceSection, DestinationSection: String): Boolean;
+begin
+Result := CopySection(StrToIFXStr(SourceSection),StrToIFXStr(DestinationSection));
+end;
+ 
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.CopyKey(const SourceSection, DestinationSection, SourceKey, DestinationKey: String): Boolean;
+begin
+Result := CopyKey(StrToIFXStr(SourceSection),StrToIFXStr(DestinationSection),StrToIFXStr(SourceKey),StrToIFXStr(DestinationKey));
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SortSection(const Section: String);
+begin
+SortSection(StrToIFXStr(Section));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SortKeys(const Section: String);
+begin
+SortKeys(StrToIFXStr(Section));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.GetSectionComment(const Section: String): String;
+begin
+Result := IFXStrToStr(GetSectionComment(StrToIFXStr(Section)));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.GetKeyComment(const Section, Key: String): String;
+begin
+Result := IFXStrToStr(GetKeyComment(StrToIFXStr(Section),StrToIFXStr(Key)));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SetFileComment(const Text: String);
+begin
+SetFileComment(StrToIFXStr(Text));
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SetSectionComment(const Section: String; const Text: String);
+begin
+SetSectionComment(StrToIFXStr(Section),StrToIFXStr(Text));
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SetKeyComment(const Section, Key: String; const Text: String);
+begin
+SetKeyComment(StrToIFXStr(Section),StrToIFXStr(Key),StrToIFXStr(Text));
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.RemoveSectionComment(const Section: String; RemoveKeysComments: Boolean = False);
+begin
+RemoveSectionComment(StrToIFXStr(Section),RemoveKeysComments);
+end;
+ 
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.RemoveKeyComment(const Section, Key: String);
+begin
+RemoveKeyComment(StrToIFXStr(Section),StrToIFXStr(Key));
+end;
+ 
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.GetValueState(const Section, Key: String): TIFXValueState;
+begin
+Result := GetValueState(StrToIFXStr(Section),StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.GetValueEncoding(const Section, Key: String): TIFXValueEncoding;
+begin
+Result := GetValueEncoding(StrToIFXStr(Section),StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.SetValueEncoding(const Section, Key: String; Encoding: TIFXValueEncoding);
+begin
+SetValueEncoding(StrToIFXStr(Section),StrToIFXStr(Key),Encoding);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.GetValueType(const Section, Key: String): TIFXValueType;
+begin
+Result := GetValueType(StrToIFXStr(Section),StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.ReadSection(const Section: String; Strings: TStrings);
+begin
+ReadSection(StrToIFXStr(Section),Strings);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.ReadSectionValues(const Section: String; Strings: TStrings);
+begin
+ReadSectionValues(StrToIFXStr(Section),Strings);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBool(const Section, Key: String; Value: Boolean);
+begin
+WriteBool(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBool(const Section, Key: String; Value: Boolean; Encoding: TIFXValueEncoding);
+begin
+WriteBool(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end; 
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt8(const Section, Key: String; Value: Int8);
+begin
+WriteInt8(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end; 
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt8(const Section, Key: String; Value: Int8; Encoding: TIFXValueEncoding);
+begin
+WriteInt8(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt8(const Section, Key: String; Value: UInt8);
+begin
+WriteUInt8(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end; 
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt8(const Section, Key: String; Value: UInt8; Encoding: TIFXValueEncoding);
+begin
+WriteUInt8(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt16(const Section, Key: String; Value: Int16);
+begin
+WriteInt16(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end; 
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt16(const Section, Key: String; Value: Int16; Encoding: TIFXValueEncoding); 
+begin
+WriteInt16(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end; 
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt16(const Section, Key: String; Value: UInt16);
+begin
+WriteUInt16(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end; 
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt16(const Section, Key: String; Value: UInt16; Encoding: TIFXValueEncoding);
+begin
+WriteUInt16(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;   
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt32(const Section, Key: String; Value: Int32);
+begin
+WriteInt32(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;  
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt32(const Section, Key: String; Value: Int32; Encoding: TIFXValueEncoding); 
+begin
+WriteInt32(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;  
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt32(const Section, Key: String; Value: UInt32);
+begin
+WriteUInt32(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;  
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt32(const Section, Key: String; Value: UInt32; Encoding: TIFXValueEncoding); 
+begin
+WriteUInt32(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;  
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt64(const Section, Key: String; Value: Int64);
+begin
+WriteInt64(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;  
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInt64(const Section, Key: String; Value: Int64; Encoding: TIFXValueEncoding);  
+begin
+WriteInt64(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;  
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt64(const Section, Key: String; Value: UInt64);
+begin
+WriteUInt64(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;    
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteUInt64(const Section, Key: String; Value: UInt64; Encoding: TIFXValueEncoding); 
+begin
+WriteUInt64(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;   
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInteger(const Section, Key: String; Value: Integer);
+begin
+WriteInteger(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;   
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteInteger(const Section, Key: String; Value: Integer; Encoding: TIFXValueEncoding); 
+begin
+WriteInteger(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;    
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteFloat32(const Section, Key: String; Value: Float32);
+begin
+WriteFloat32(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;   
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteFloat32(const Section, Key: String; Value: Float32; Encoding: TIFXValueEncoding);  
+begin
+WriteFloat32(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;   
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteFloat64(const Section, Key: String; Value: Float64);
+begin
+WriteFloat64(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;      
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteFloat64(const Section, Key: String; Value: Float64; Encoding: TIFXValueEncoding); 
+begin
+WriteFloat64(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;   
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteFloat(const Section, Key: String; Value: Double);
+begin
+WriteFloat(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;    
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteFloat(const Section, Key: String; Value: Double; Encoding: TIFXValueEncoding); 
+begin
+WriteFloat(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;   
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteTime(const Section, Key: String; Value: TDateTime);
+begin
+WriteTime(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;    
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteTime(const Section, Key: String; Value: TDateTime; Encoding: TIFXValueEncoding); 
+begin
+WriteTime(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;     
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteDate(const Section, Key: String; Value: TDateTime);
+begin
+WriteDate(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;    
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteDate(const Section, Key: String; Value: TDateTime; Encoding: TIFXValueEncoding);  
+begin
+WriteDate(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;    
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteDateTime(const Section, Key: String; Value: TDateTime);
+begin
+WriteDateTime(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end; 
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteDateTime(const Section, Key: String; Value: TDateTime; Encoding: TIFXValueEncoding);  
+begin
+WriteDateTime(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;   
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteString(const Section, Key: String; const Value: String);
+begin
+WriteString(StrToIFXStr(Section),StrToIFXStr(Key),Value);
+end;   
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteString(const Section, Key: String; const Value: String; Encoding: TIFXValueEncoding);
+begin
+WriteString(StrToIFXStr(Section),StrToIFXStr(Key),Value,Encoding);
+end;  
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryBuffer(const Section, Key: String; const Buffer; Size: TMemSize; MakeCopy: Boolean = False);
+begin
+WriteBinaryBuffer(StrToIFXStr(Section),StrToIFXStr(Key),Buffer,Size,MakeCopy);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryBuffer(const Section, Key: String; const Buffer; Size: TMemSize; Encoding: TIFXValueEncoding; MakeCopy: Boolean = False);
+begin
+WriteBinaryBuffer(StrToIFXStr(Section),StrToIFXStr(Key),Buffer,Size,Encoding,MakeCopy);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryMemory(const Section, Key: String; Value: Pointer; Size: TMemSize; MakeCopy: Boolean = False);
+begin
+WriteBinaryMemory(StrToIFXStr(Section),StrToIFXStr(Key),Value,Size,MakeCopy);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryMemory(const Section, Key: String; Value: Pointer; Size: TMemSize; Encoding: TIFXValueEncoding; MakeCopy: Boolean = False);
+begin
+WriteBinaryMemory(StrToIFXStr(Section),StrToIFXStr(Key),Value,Size,Encoding,MakeCopy);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryStream(const Section, Key: String; Stream: TStream; Position, Count: Int64);
+begin
+WriteBinaryStream(StrToIFXStr(Section),StrToIFXStr(Key),Stream,Position,Count);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryStream(const Section, Key: String; Stream: TStream; Position, Count: Int64; Encoding: TIFXValueEncoding);
+begin
+WriteBinaryStream(StrToIFXStr(Section),StrToIFXStr(Key),Stream,Position,Count,Encoding);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryStream(const Section, Key: String; Stream: TStream);
+begin
+WriteBinaryStream(StrToIFXStr(Section),StrToIFXStr(Key),Stream);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.WriteBinaryStream(const Section, Key: String; Stream: TStream; Encoding: TIFXValueEncoding);
+begin
+WriteBinaryStream(StrToIFXStr(Section),StrToIFXStr(Key),Stream,Encoding);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TIniFileEx.PrepareReading(const Section, Key: String; ValueType: TIFXValueType);
+begin
+PrepareReading(StrToIFXStr(Section),StrToIFXStr(Key),ValueType);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBool(const Section, Key: String; Default: Boolean = False): Boolean;
+begin
+Result := ReadBool(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end; 
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInt8(const Section, Key: String; Default: Int8 = 0): Int8;
+begin
+Result := ReadInt8(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end; 
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadUInt8(const Section, Key: String; Default: UInt8 = 0): UInt8;
+begin
+Result := ReadUInt8(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInt16(const Section, Key: String; Default: Int16 = 0): Int16;
+begin
+Result := ReadInt16(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadUInt16(const Section, Key: String; Default: UInt16 = 0): UInt16;
+begin
+Result := ReadUInt16(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInt32(const Section, Key: String; Default: Int32 = 0): Int32;
+begin
+Result := ReadInt32(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadUInt32(const Section, Key: String; Default: UInt32 = 0): UInt32;
+begin
+Result := ReadUInt32(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInt64(const Section, Key: String; Default: Int64 = 0): Int64;
+begin
+Result := ReadInt64(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadUInt64(const Section, Key: String; Default: UInt64 = 0): UInt64;
+begin
+Result := ReadUInt64(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadInteger(const Section, Key: String; Default: Integer = 0): Integer;
+begin
+Result := ReadInteger(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadFloat32(const Section, Key: String; Default: Float32 = 0.0): Float32;
+begin
+Result := ReadFloat32(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadFloat64(const Section, Key: String; Default: Float64 = 0.0): Float64;
+begin
+Result := ReadFloat64(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadFloat(const Section, Key: String; Default: Double = 0.0): Double;
+begin
+Result := ReadFloat(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadTime(const Section, Key: String; Default: TDateTime = 0.0): TDateTime;
+begin
+Result := ReadTime(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadDate(const Section, Key: String; Default: TDateTime = 0.0): TDateTime;
+begin
+Result := ReadDate(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadDateTime(const Section, Key: String; Default: TDateTime = 0.0): TDateTime;
+begin
+Result := ReadDateTime(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadString(const Section, Key: String; Default: String = ''): String;
+begin
+Result := ReadString(StrToIFXStr(Section),StrToIFXStr(Key),Default);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinarySize(const Section, Key: String): TMemSize;
+begin
+Result := ReadBinarySize(StrToIFXStr(Section),StrToIFXStr(Key));
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinaryBuffer(const Section, Key: String; var Buffer; Size: TMemSize): TMemSize;
+begin
+Result := ReadBinaryBuffer(StrToIFXStr(Section),StrToIFXStr(Key),Buffer,Size);
+end;
+ 
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinaryMemory(const Section, Key: String; out Ptr: Pointer; MakeCopy: Boolean = False): TMemSize;
+begin
+Result := ReadBinaryMemory(StrToIFXStr(Section),StrToIFXStr(Key),Ptr,MakeCopy);
+end;
+ 
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinaryMemory(const Section, Key: String; Ptr: Pointer; Size: TMemSize): TMemSize;
+begin
+Result := ReadBinaryMemory(StrToIFXStr(Section),StrToIFXStr(Key),Ptr,Size);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TIniFileEx.ReadBinaryStream(const Section, Key: String; Stream: TStream; ClearStream: Boolean = False): Int64;
+begin
+Result := ReadBinaryStream(StrToIFXStr(Section),StrToIFXStr(Key),Stream,ClearStream);
+end;
+
+{$ENDIF}
+
+//------------------------------------------------------------------------------
+
+{$IFDEF AllowLowLevelAccess}
 
 Function TIniFileEx.GetSectionNode(const Section: TIFXString): TIFXSectionNode;
 begin
