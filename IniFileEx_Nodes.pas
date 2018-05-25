@@ -1050,7 +1050,8 @@ If Length(fValueStr) > 0 then
         TempMem := WideDecode(fValueStr,TempSize,Encoding);
         try
           SetLength(fValueData.StringValue,TempSize div SizeOf(TIFXChar));
-          Move(TempMem^,PIFXChar(fValueData.StringValue)^,Length(fValueData.StringValue) * SizeOf(TIFXChar));
+          If Length(fValueData.StringValue) > 0 then
+            Move(TempMem^,PIFXChar(fValueData.StringValue)^,Length(fValueData.StringValue) * SizeOf(TIFXChar));
         finally
           FreeMem(TempMem,TempSize);
         end;

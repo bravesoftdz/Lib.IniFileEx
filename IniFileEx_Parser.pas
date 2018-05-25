@@ -27,6 +27,8 @@ type
 const
   IFX_UTF8BOM: packed array[0..2] of Byte = ($EF,$BB,$BF);
 
+  IFX_INI_MINLINELENGTH = 16; // minimu length of a line before it can be wrapped
+
   IFX_BINI_SIGNATURE_FILE    = UInt32($494E4942); // BINI
   IFX_BINI_SIGNATURE_SECTION = UInt32($54434553); // SECT
   IFX_BINI_SIGNATURE_KEY     = UInt32($5659454B); // KEYV
@@ -50,6 +52,7 @@ type
     // for textual processing...
     fEmptyLinePos:        Int64;
     fIniStrings:          TUTF8StringList;
+    fProcessedLine:       TIFXString;
     fLastComment:         TIFXString;
     fFileCommentSet:      Boolean;
     fLastTextLineType:    TIFXTextLineType;
@@ -86,7 +89,7 @@ type
     // auxiliary methods
     Function ConstructCommentBlock(const CommentStr: TIFXString): TIFXString; virtual;
     Function ConstructSectionName(SectionNode: TIFXSectionNode): TIFXString; virtual;
-    Function ConstructKeyValueLine(KeyNode: TIFXKeyNode): TIFXString; virtual;
+    Function ConstructKeyValueLine(KeyNode: TIFXKeyNode; out ValueStart: TStrSize): TIFXString; virtual;
     Function PrepareInlineComment(const CommentStr: TIFXString): TIFXString; virtual;
     // writing to stream
     procedure WriteTextual(Stream: TStream); virtual;
@@ -98,7 +101,7 @@ type
 implementation
 
 uses
-  SysUtils,
+  SysUtils, Math,
   BinaryStreaming, StrRect,
   IniFileEx_Utils;
 
@@ -199,9 +202,36 @@ end;
 //------------------------------------------------------------------------------
 
 Function TIFXParser.Text_WriteKey(KeyNode: TIFXKeyNode): TMemSize;
+var
+  LineStr:  TIFXString;
+  ValStart: TStrSize;
+  Cntr,i:   Integer;
 begin
 Result := Text_WriteString(ConstructCommentBlock(KeyNode.Comment));
-Inc(Result,Text_WriteString(ConstructKeyValueLine(KeyNode),Length(KeyNode.InlineComment) <= 0));
+LineStr := ConstructKeyValueLine(KeyNode,ValStart);
+If (fSettingsPtr^.IniFormat.ValueWrapLength > IFX_INI_MINLINELENGTH) and
+  ((Length(LineStr) - ValStart) >= fSettingsPtr^.IniFormat.ValueWrapLength) and
+  (KeyNode.ValueType in [ivtUndecided,ivtString,ivtBinary]) then
+  begin
+    // write key and delimiter
+    Inc(Result,Text_WriteString(Copy(LineStr,1,ValStart - 1),False));
+    // compute how much breaks there has to be
+    Cntr := Ceil((Length(LineStr) - ValStart) / (fSettingsPtr^.IniFormat.ValueWrapLength - 1)) - 1;
+    // write blocks
+    For i := 0 to Pred(Cntr) do
+      begin
+        Inc(Result,Text_WriteString(
+          Copy(LineStr,i * (fSettingsPtr^.IniFormat.ValueWrapLength - 1) + ValStart,
+            (fSettingsPtr^.IniFormat.ValueWrapLength - 1)),False));
+        Inc(Result,Text_WriteString(fSettingsPtr^.IniFormat.EscapeChar + fSettingsPtr^.IniFormat.LineBreak,False));
+      end;
+    // write last block  
+    Inc(Result,Text_WriteString(
+      Copy(LineStr,Cntr * (fSettingsPtr^.IniFormat.ValueWrapLength - 1) + ValStart,
+        Length(LineStr) - ((Cntr * (fSettingsPtr^.IniFormat.ValueWrapLength - 1)) + ValStart) + 1),
+      Length(KeyNode.InlineComment) <= 0));
+  end
+else Inc(Result,Text_WriteString(ConstructKeyValueLine(KeyNode,ValStart),Length(KeyNode.InlineComment) <= 0));
 Inc(Result,Text_WriteString(PrepareInlineComment(KeyNode.InlineComment)));
 end;
 
@@ -240,21 +270,18 @@ end;
 //------------------------------------------------------------------------------
 
 procedure TIFXParser.Text_ReadLine;
-var
-  FirstLineChar:  TIFXChar;
 begin
 // select how to parse the line according to first character
-If Length(fIniStrings[fIniStrings.UserData]) > 0 then
+If Length(fProcessedLine) > 0 then
   begin
-    // there should be no need for conversion, so just typecast
-    FirstLineChar := TIFXChar(fIniStrings[fIniStrings.UserData][1]);
-    If FirstLineChar = fSettingsPtr^.IniFormat.CommentChar then
+    If fProcessedLine[1] = fSettingsPtr^.IniFormat.CommentChar then
       Text_ReadCommentLine
-    else If FirstLineChar = fSettingsPtr^.IniFormat.SectionStartChar then
+    else If fProcessedLine[1] = fSettingsPtr^.IniFormat.SectionStartChar then
       Text_ReadSectionLine
     else
       // invalid lines will fall to key parser
       Text_ReadKeyLine;
+    fProcessedLine := '';
   end
 else fLastTextLineType := itltEmpty;
 end;
@@ -280,8 +307,7 @@ If (fLastTextLineType <> itltComment) and (Length(fLastComment) > 0) then
       end;
     fLastComment := '';
   end;
-Text_AddToLastComment(UTF8ToIFXStr(Copy(fIniStrings[fIniStrings.UserData],2,
-  Length(fIniStrings[fIniStrings.UserData]) - 1)));
+Text_AddToLastComment(Copy(fProcessedLine,2,Length(fProcessedLine) - 1));
 fLastTextLineType := itltComment;
 end;
 
@@ -289,17 +315,15 @@ end;
 
 procedure TIFXParser.Text_ReadSectionLine;
 var
-  TempStr:  TIFXString;
   SectName: TIFXString;
   i,p:      TStrSize;
   Cntr:     Integer;
   ICmnt:    TIFXString;
 begin
-TempStr := UTF8ToIFXStr(fIniStrings[fIniStrings.UserData]);
 // find closing character; if not present, discard line
 p := -1;
-For i := 1 to Length(TempStr) do
-  If TempStr[i] = fSettingsPtr^.IniFormat.SectionEndChar then
+For i := 1 to Length(fProcessedLine) do
+  If fProcessedLine[i] = fSettingsPtr^.IniFormat.SectionEndChar then
     begin
       p := i;
       Break{For i};
@@ -307,14 +331,14 @@ For i := 1 to Length(TempStr) do
 If p > 0 then
   begin
     // extract section name from the line
-    SectName := Copy(TempStr,2,p - 2);
+    SectName := Copy(fProcessedLine,2,p - 2);
     // search for an inline comment
     ICmnt := '';
-    For i := (p + 1) to Length(TempStr) do
-      If TempStr[i] = fSettingsPtr.IniFormat.CommentChar then
+    For i := (p + 1) to Length(fProcessedLine) do
+      If fProcessedLine[i] = fSettingsPtr^.IniFormat.CommentChar then
         begin
           // everything after comment mark is assumed to be an inline comment
-          ICmnt := Copy(TempStr,i + 1,Length(TempStr) - i);
+          ICmnt := Copy(fProcessedLine,i + 1,Length(fProcessedLine) - i);
           Break{For i};
         end;
     i := fFileNode.IndexOfSection(SectName);
@@ -380,7 +404,6 @@ end;
 
 procedure TIFXParser.Text_ReadKeyLine;
 var
-  TempStr:  TIFXString;
   i,p:      TSTrSize;
   KeyName:  TIFXString;
   KeyCmnt:  TIFXString;
@@ -403,16 +426,16 @@ var
         AfterVal := False;
         For ii := 1 to Length(FromStr) do
           begin
-            If (FromStr[ii] = fSettingsPtr.IniFormat.EscapeChar) and not Escaped then
+            If (FromStr[ii] = fSettingsPtr^.IniFormat.EscapeChar) and not Escaped then
               Escaped := True
-            else If (FromStr[ii] = fSettingsPtr.IniFormat.QuoteChar) and not Escaped and not AfterVal then
+            else If (FromStr[ii] = fSettingsPtr^.IniFormat.QuoteChar) and not Escaped and not AfterVal then
               begin
                 If Quoted then
                   AfterVal := True;
                 Quoted := not Quoted;
                 Escaped := False;
               end
-            else If (FromStr[ii] = fSettingsPtr.IniFormat.CommentChar) and not Quoted then
+            else If (FromStr[ii] = fSettingsPtr^.IniFormat.CommentChar) and not Quoted then
               begin
                 // everything after comment mark is assumed to be an inline comment
                 Result := Copy(FromStr,ii + 1,Length(FromStr) - ii);
@@ -427,11 +450,10 @@ var
   end;
 
 begin
-TempStr := UTF8ToIFXStr(fIniStrings[fIniStrings.UserData]);
 // get position of value delimiter
 p := -1;
-For i := 1 to Length(TempStr) do
-  If TempStr[i] = fSettingsPtr^.IniFormat.ValueDelimChar then
+For i := 1 to Length(fProcessedLine) do
+  If fProcessedLine[i] = fSettingsPtr^.IniFormat.ValueDelimChar then
     begin
       p := i;
       Break{For i};
@@ -439,11 +461,11 @@ For i := 1 to Length(TempStr) do
 If p > 0 then
   begin
     // everything in front of delimiter is key, everything behind is a value and potentially inline comment
-    KeyName := IFXTrimStr(Copy(TempStr,1,p - 1),fSettingsPtr^.IniFormat.WhiteSpaceChar);
-    TempStr := IFXTrimStr(Copy(TempStr,p + 1,Length(TempStr) - p),fSettingsPtr^.IniFormat.WhiteSpaceChar);
+    KeyName := IFXTrimStr(Copy(fProcessedLine,1,p - 1),fSettingsPtr^.IniFormat.WhiteSpaceChar);
+    fProcessedLine := IFXTrimStr(Copy(fProcessedLine,p + 1,Length(fProcessedLine) - p),fSettingsPtr^.IniFormat.WhiteSpaceChar);
     KeyCmnt := Text_ConsumeLastComment;
-    // search for an inline comment
-    ICmnt := ExtractInlineComment(TempStr);    
+    // extract inline comment
+    ICmnt := ExtractInlineComment(fProcessedLine);
     If not Assigned(fCurrentSectionNode) then
       Text_CreateEmptyNameSection;
     i := fCurrentSectionNode.IndexOfKey(KeyName);
@@ -454,7 +476,7 @@ If p > 0 then
           begin
             fCurrentSectionNode[i].Comment := KeyCmnt;
             fCurrentSectionNode[i].InlineComment := ICmnt;
-            fCurrentSectionNode[i].ValueStr := TempStr;
+            fCurrentSectionNode[i].ValueStr := fProcessedLine;
           end;
         idbRenameOld:
           begin
@@ -470,7 +492,7 @@ If p > 0 then
             KeyNode := TIFXKeyNode.Create(KeyName,fCurrentSectionNode.SettingsPtr);
             KeyNode.Comment := KeyCmnt;
             KeyNode.InlineComment := ICmnt;
-            KeyNode.ValueStr := TempStr;
+            KeyNode.ValueStr := fProcessedLine;
             fCurrentSectionNode.AddKeyNode(KeyNode);
           end;
         idbRenameNew:
@@ -486,7 +508,7 @@ If p > 0 then
             KeyNode := TIFXKeyNode.Create(KeyName,fCurrentSectionNode.SettingsPtr);
             KeyNode.Comment := KeyCmnt;
             KeyNode.InlineComment := ICmnt;
-            KeyNode.ValueStr := TempStr;
+            KeyNode.ValueStr := fProcessedLine;
             fCurrentSectionNode.AddKeyNode(KeyNode);
           end;
       else
@@ -498,7 +520,7 @@ If p > 0 then
         KeyNode := TIFXKeyNode.Create(KeyName,fCurrentSectionNode.SettingsPtr);
         KeyNode.Comment := KeyCmnt;
         KeyNode.InlineComment := ICmnt;
-        KeyNode.ValueStr := TempStr;
+        KeyNode.ValueStr := fProcessedLine;
         fCurrentSectionNode.AddKeyNode(KeyNode);
       end;
     fLastTextLineType := itltKey;
@@ -953,12 +975,13 @@ begin
 SetLength(Result,Length(SectionNode.NameStr) + 2{section name start and end char});
 Result[1] := fSettingsPtr^.IniFormat.SectionStartChar;
 Result[Length(Result)] := fSettingsPtr^.IniFormat.SectionEndChar;
-Move(PIFXChar(SectionNode.NameStr)^,Result[2],Length(SectionNode.NameStr) * SizeOf(TIFXChar));
+If Length(SectionNode.NameStr) > 0 then
+  Move(PIFXChar(SectionNode.NameStr)^,Result[2],Length(SectionNode.NameStr) * SizeOf(TIFXChar));
 end;
 
 //------------------------------------------------------------------------------
 
-Function TIFXParser.ConstructKeyValueLine(KeyNode: TIFXKeyNode): TIFXString;
+Function TIFXParser.ConstructKeyValueLine(KeyNode: TIFXKeyNode; out ValueStart: TStrSize): TIFXString;
 var
   Temp: TStrSize;
 begin
@@ -971,7 +994,8 @@ If fSettingsPtr^.IniFormat.ValueWhiteSpace then
 SetLength(Result,Temp);
 // build resulting string
 Temp := 1;
-Move(KeyNode.NameStr[1],Result[Temp],Length(KeyNode.NameStr) * SizeOf(TIFXChar));
+If Length(KeyNode.NameStr) > 0 then
+  Move(KeyNode.NameStr[1],Result[Temp],Length(KeyNode.NameStr) * SizeOf(TIFXChar));
 Inc(Temp,Length(KeyNode.NameStr));
 If fSettingsPtr^.IniFormat.KeyWhiteSpace then
   begin
@@ -985,7 +1009,9 @@ If fSettingsPtr^.IniFormat.KeyWhiteSpace then
     Result[Temp] := fSettingsPtr^.IniFormat.WhiteSpaceChar;
     Inc(Temp{WhiteSpaceChar});
   end;
-Move(KeyNode.ValueStr[1],Result[Temp],Length(KeyNode.ValueStr) * SizeOf(TIFXChar));
+ValueStart := Temp;
+If Length(KeyNode.ValueStr) > 0 then
+  Move(KeyNode.ValueStr[1],Result[Temp],Length(KeyNode.ValueStr) * SizeOf(TIFXChar));
 end;
 
 //------------------------------------------------------------------------------
@@ -1001,7 +1027,8 @@ If Length(CommentStr) > 0 then
     Result[2] := fSettingsPtr^.IniFormat.CommentChar;
     ResPos := 3;
     For i := 1 to Length(CommentStr) do
-      If (Ord(CommentStr[i]) >= 32) and (CommentStr[i] <> fSettingsPtr^.IniFormat.CommentChar) then
+      If (Ord(CommentStr[i]) >= 32) and (CommentStr[i] <> fSettingsPtr^.IniFormat.CommentChar) and
+        (CommentStr[i] <> fSettingsPtr^.IniFormat.EscapeChar) then
         begin
           Result[ResPos] := CommentStr[i];
           Inc(ResPos);
@@ -1049,7 +1076,8 @@ end;
 
 procedure TIFXParser.ReadTextual(Stream: TStream);
 var
-  i:  Integer;
+  i:        Integer;
+  TempStr:  TIFXString;
 begin
 // prepare stringlist for parsing of lines
 fIniStrings := TUTF8StringList.Create;
@@ -1059,18 +1087,50 @@ try
   fIniStrings.LoadFromStream(Stream);
   If fIniStrings.Count > 0 then
     begin
-      // remove any leading whitespaces
-      For i := fIniStrings.LowIndex to fIniStrings.HighIndex do
-        fIniStrings[i] := IFXTrimUTF8(fIniStrings[i]);
       // traverse and parse lines  
-      fIniStrings.UserData := 0;
       fLastTextLineType := itltEmpty;
       fCurrentSectionNode := nil;
-      while fIniStrings.UserData < fIniStrings.Count do
+      TempStr := '';
+      For i := fIniStrings.LowIndex to fIniStrings.HighIndex do
         begin
-          Text_ReadLine;
-          fIniStrings.UserData := fIniStrings.UserData + 1;
+          // remove any leading or trailing whitespaces
+          TempStr := IFXTrimStr(UTF8ToIFXStr(fIniStrings[i]));
+          If Length(TempStr) > 0 then
+            begin
+              If Length(fProcessedLine) > 0 then
+                begin
+                  // continuation of previous line
+                  If TempStr[Length(TempStr)] <> fSettingsPtr^.IniFormat.EscapeChar then
+                    begin
+                      // line terminates, process it
+                      fProcessedLine := fProcessedLine + TempStr;
+                      Text_ReadLine;
+                    end
+                  // line will continue
+                  else fProcessedLine := fProcessedLine + Copy(TempStr,1,Length(TempStr) - 1);
+                end
+              else
+                begin
+                  // new line
+                  If TempStr[Length(TempStr)] <> fSettingsPtr^.IniFormat.EscapeChar then
+                    begin
+                      // line will not continue
+                      fProcessedLine := TempStr;
+                      Text_ReadLine;
+                    end
+                  // line will continue
+                  else fProcessedLine := Copy(TempStr,1,Length(TempStr) - 1);;
+                end;
+            end
+          else
+            begin
+              // empty line, must be processed
+              fProcessedLine := '';
+              Text_ReadLine;
+            end;
         end;
+      If Length(fProcessedLine) > 0 then
+        Text_ReadLine;
     end;
 finally
   FreeAndNil(fIniStrings);

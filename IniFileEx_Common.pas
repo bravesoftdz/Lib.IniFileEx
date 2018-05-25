@@ -105,7 +105,7 @@ type
     WhiteSpaceChar:   TIFXChar;
     KeyWhiteSpace:    Boolean;
     ValueWhiteSpace:  Boolean;
-    //MaxValueLineLen:  Integer;
+    ValueWrapLength:  Integer;
     LineBreak:        TIFXString;
   end;
 

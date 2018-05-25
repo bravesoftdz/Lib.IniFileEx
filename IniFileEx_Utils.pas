@@ -738,7 +738,7 @@ Sett.IniFormat.ValueDelimChar   := TIFXChar('=');
 Sett.IniFormat.WhiteSpaceChar   := TIFXChar(' ');
 Sett.IniFormat.KeyWhiteSpace    := True;
 Sett.IniFormat.ValueWhiteSpace  := True;
-//Sett.IniFormat.MaxValueLineLen  := -1;
+Sett.IniFormat.ValueWrapLength  := 0;   // < min line length = unlimited
 Sett.IniFormat.LineBreak        := StrToIFXStr(sLineBreak);
 // other fields
 Sett.FullNameEval          := True;

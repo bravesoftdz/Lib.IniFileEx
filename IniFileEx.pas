@@ -348,6 +348,7 @@ type
     property WhiteSpaceChar: TIFXChar read fSettings.IniFormat.WhiteSpaceChar write fSettings.IniFormat.WhiteSpaceChar;
     property KeyWhiteSpace: Boolean read fSettings.IniFormat.KeyWhiteSpace write fSettings.IniFormat.KeyWhiteSpace;
     property ValueWhiteSpace: Boolean read fSettings.IniFormat.ValueWhiteSpace write fSettings.IniFormat.ValueWhiteSpace;
+    property ValueWrapLength: Integer read fSettings.IniFormat.ValueWrapLength write fSettings.IniFormat.ValueWrapLength;
     property LineBreak: TIFXString read fSettings.IniFormat.LineBreak write fSettings.IniFormat.LineBreak;
     property SectionCount: Integer read GetSectionCount;
     property SectionKeyCount[Index: Integer]: Integer read GetSectionKeyCount;
@@ -1662,12 +1663,13 @@ procedure TIniFileEx.ReadSectionValues(const Section: TIFXString; Strings: TStri
 var
   SectionNode:  TIFXSectionNode;
   i:            Integer;
+  Dummy:        TStrSize;
 begin
 If fFileNode.FindSection(Section,SectionNode) then
   begin
     Strings.Clear;
     For i := SectionNode.LowIndex to SectionNode.HighIndex do
-      Strings.Add(IFXStrToStr(fParser.ConstructKeyValueLine(SectionNode[i])));
+      Strings.Add(IFXStrToStr(fParser.ConstructKeyValueLine(SectionNode[i],Dummy)));
   end;
 end;
 
