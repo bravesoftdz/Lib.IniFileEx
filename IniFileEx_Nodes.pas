@@ -287,7 +287,8 @@ implementation
 uses
   SysUtils,
   BinTextEnc, FloatHex,
-{$IF not Defined(FPC) and Defined(CanInline)}CRC32{inline expansion},{$IFEND}
+  //inline expansion...
+{$IF not Defined(FPC) and Defined(CanInline)}CRC32,StrRect,{$IFEND}
   IniFileEx_Utils;
 
 {$IFDEF FPC_DisableWarns}

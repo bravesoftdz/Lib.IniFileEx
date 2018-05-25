@@ -43,7 +43,7 @@ unit IniFileEx_Utils;
 interface
 
 uses
-  AuxTypes, BinTextEnc,
+  AuxTypes, BinTextEnc, StrRect{has to be here for inline expansion},
   IniFileEx_Common;
 
 {===============================================================================
@@ -131,7 +131,7 @@ implementation
 
 uses
   SysUtils,
-  StrRect, CRC32;
+  CRC32;
 
 {===============================================================================
     UInt64 <-> IFXString conversions
@@ -317,7 +317,7 @@ end;
 Function IFXStrToUTF8(const IFXStr: TIFXString): UTF8String;
 begin
 {$IF Declared(StringToUTF8)}
-Result := StringToUTF8(Str);
+Result := StringToUTF8(IFXStr);
 {$ELSE}
 Result := UTF8Encode(IFXStr);
 {$IFEND}
@@ -328,7 +328,7 @@ end;
 Function UTF8ToIFXStr(const Str: UTF8String): TIFXString;
 begin
 {$IF Declared(UTF8ToString)}
-Result := UTF8ToString(IFXStr);
+Result := UTF8ToString(Str);
 {$ELSE}
 Result := UTF8Decode(Str);
 {$IFEND}

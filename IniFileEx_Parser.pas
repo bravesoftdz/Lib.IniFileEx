@@ -845,6 +845,7 @@ try
           KeyNode.InlineComment := Binary_0000_ReadString;
           KeyNode.ValueEncoding := IFXByteToValueEncoding(Stream_ReadUInt8(fStream));
           ValueType := IFXByteToValueType(Stream_ReadUInt8(fStream));
+          TempValue.StringValue := '';
           // read value data to temporary storage
           case ValueType of
             ivtBool:      ValReadCheckAndRaise(Stream_ReadBuffer(fStream,TempValue.BoolValue,SizeOf(Boolean)),SizeOf(Boolean));
@@ -1003,7 +1004,8 @@ If Length(CommentStr) > 0 then
         Inc(i);
         Inc(Temp);
       end;
-  end;
+  end
+else Result := '';
 end;
 
 //------------------------------------------------------------------------------
