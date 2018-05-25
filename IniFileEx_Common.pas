@@ -93,20 +93,22 @@ type
     INI formatting and other settings
 ===============================================================================}
 type
-  TIFXIniFormat = record
-    EscapeChar:       TIFXChar;
-    QuoteChar:        TIFXChar;
-    NumericChar:      TIFXChar;
-    ForceQuote:       Boolean;
-    CommentChar:      TIFXChar;
-    SectionStartChar: TIFXChar;
-    SectionEndChar:   TIFXChar;
-    ValueDelimChar:   TIFXChar;
-    WhiteSpaceChar:   TIFXChar;
-    KeyWhiteSpace:    Boolean;
-    ValueWhiteSpace:  Boolean;
-    ValueWrapLength:  Integer;
-    LineBreak:        TIFXString;
+  // options for textual ini
+  TIFXTextIniSettings = record
+    EscapeChar:         TIFXChar;
+    QuoteChar:          TIFXChar;
+    NumericChar:        TIFXChar;
+    ForceQuote:         Boolean;
+    CommentChar:        TIFXChar;
+    SectionStartChar:   TIFXChar;
+    SectionEndChar:     TIFXChar;
+    ValueDelimChar:     TIFXChar;
+    WhiteSpaceChar:     TIFXChar;
+    KeyWhiteSpace:      Boolean;
+    ValueWhiteSpace:    Boolean;
+    ValueWrapLength:    Integer;
+    LineBreak:          TIFXString;
+    WriteByteOrderMask: Boolean;
   end;
 
   TIFXDuplicityBehavior = (idbDrop,idbReplace,idbRenameOld,idbRenameNew);
@@ -115,7 +117,7 @@ type
 
   TIFXSettings = record
     FormatSettings:         TFormatSettings;
-    IniFormat:              TIFXIniFormat;
+    TextIniSettings:        TIFXTextIniSettings;
     FullNameEval:           Boolean;
     ReadOnly:               Boolean;
     DuplicityBehavior:      TIFXDuplicityBehavior;
@@ -124,7 +126,6 @@ type
     WorkingStyle:           TIFXWorkingStyle;
     WorkingStream:          TStream;
     WorkingFile:            String;
-    WriteByteOrderMask:     Boolean;
   end;
   PIFXSettings = ^TIFXSettings;
 

@@ -51,8 +51,8 @@ Function IFXTrimStr(const Str: TIFXString): TIFXString; overload;
     IFXString encoding/decoding for use in textual INI
 ===============================================================================}
 
-Function IFXEncodeString(const Str: TIFXString; FormatSettings: TIFXIniFormat): TIFXString;
-Function IFXDecodeString(const Str: TIFXString; FormatSettings: TIFXIniFormat): TIFXString;
+Function IFXEncodeString(const Str: TIFXString; Settings: TIFXTextIniSettings): TIFXString;
+Function IFXDecodeString(const Str: TIFXString; Settings: TIFXTextIniSettings): TIFXString;
 
 {===============================================================================
     Hashed string function
@@ -373,7 +373,7 @@ end;
     IFXString encoding/decoding for use in textual INI
 ===============================================================================}
 
-Function IFXEncodeString(const Str: TIFXString; FormatSettings: TIFXIniFormat): TIFXString;
+Function IFXEncodeString(const Str: TIFXString; Settings: TIFXTextIniSettings): TIFXString;
 var
   i:        TStrSize;
   Temp:     TStrSize;
@@ -382,7 +382,7 @@ var
 begin
 // scan string
 Temp := 0; 
-Quoted := FormatSettings.ForceQuote or (Length(Str) <= 0);
+Quoted := Settings.ForceQuote or (Length(Str) <= 0);
 For i := 1 to Length(Str) do
   case Str[i] of
     #32:        // space
@@ -401,12 +401,12 @@ For i := 1 to Length(Str) do
         Quoted := True;
      end;
   else
-    If (Str[i] = FormatSettings.EscapeChar) or (Str[i] = FormatSettings.QuoteChar) then
+    If (Str[i] = Settings.EscapeChar) or (Str[i] = Settings.QuoteChar) then
       begin
         Inc(Temp,2);
         Quoted := True;
       end
-    else If Str[i] = FormatSettings.CommentChar then
+    else If Str[i] = Settings.CommentChar then
       begin
         // comment char does not need to be escaped,
         // but string containing it must be quoted
@@ -418,8 +418,8 @@ For i := 1 to Length(Str) do
 If Quoted then
   begin
     SetLength(Result,Temp + 2);
-    Result[1] := FormatSettings.QuoteChar;
-    Result[Length(result)] := FormatSettings.QuoteChar;
+    Result[1] := Settings.QuoteChar;
+    Result[Length(result)] := Settings.QuoteChar;
   end
 else SetLength(Result,Temp);
 // encode string
@@ -431,8 +431,8 @@ For i := 1 to Length(Str) do
   case Str[i] of
     #1..#6,#14..#31:
       begin
-        Result[Temp] := FormatSettings.EscapeChar;
-        Result[Temp + 1] := FormatSettings.NumericChar;
+        Result[Temp] := Settings.EscapeChar;
+        Result[Temp + 1] := Settings.NumericChar;
         StrTemp := StrToIFXStr(IntToHex(Ord(Str[i]),4));
         Result[Temp + 2] := StrTemp[1];
         Result[Temp + 3] := StrTemp[2];
@@ -442,7 +442,7 @@ For i := 1 to Length(Str) do
       end;
     #0,#7..#13:
       begin
-        Result[Temp] := FormatSettings.EscapeChar;
+        Result[Temp] := Settings.EscapeChar;
         case Str[i] of
           #0:   Result[Temp + 1] := '0';  // null
           #7:   Result[Temp + 1] := 'a';
@@ -456,9 +456,9 @@ For i := 1 to Length(Str) do
         Inc(Temp,2);
       end;
   else
-    If (Str[i] = FormatSettings.EscapeChar) or (Str[i] = FormatSettings.QuoteChar) then
+    If (Str[i] = Settings.EscapeChar) or (Str[i] = Settings.QuoteChar) then
       begin
-        Result[Temp] := FormatSettings.EscapeChar;
+        Result[Temp] := Settings.EscapeChar;
         Result[Temp + 1] := Str[i];
         Inc(Temp,2);
       end
@@ -472,7 +472,7 @@ end;
  
 //------------------------------------------------------------------------------
 
-Function IFXDecodeString(const Str: TIFXString; FormatSettings: TIFXIniFormat): TIFXString;
+Function IFXDecodeString(const Str: TIFXString; Settings: TIFXTextIniSettings): TIFXString;
 var
   Quoted:   Boolean;
   i,ResPos: TStrSize;
@@ -489,13 +489,13 @@ begin
 If Length(Str) > 0 then
   begin
     SetLength(Result,Length(Str));
-    Quoted := Str[1] = FormatSettings.QuoteChar;
+    Quoted := Str[1] = Settings.QuoteChar;
     If Quoted then i := 2
       else i := 1;
     ResPos := 1;
     while i <= Length(Str) do
       begin
-        If Str[i] = FormatSettings.EscapeChar then
+        If Str[i] = Settings.EscapeChar then
           begin
             If i < Length(Str) then
               case Str[i + 1] of
@@ -508,7 +508,7 @@ If Length(Str) > 0 then
                 'f':  SetAndAdvance(#12,2,1);
                 'r':  SetAndAdvance(#13,2,1);
               else
-                If Str[i + 1] = FormatSettings.NumericChar then
+                If Str[i + 1] = Settings.NumericChar then
                   begin
                     If (i + 4) < Length(Str) then
                       begin
@@ -519,14 +519,14 @@ If Length(Str) > 0 then
                       end
                     else Break{while...};
                   end
-                else If (Str[i + 1] = FormatSettings.EscapeChar) or (Str[i + 1] = FormatSettings.QuoteChar) then
+                else If (Str[i + 1] = Settings.EscapeChar) or (Str[i + 1] = Settings.QuoteChar) then
                   SetAndAdvance(Str[i + 1],2,1)
                 else
                   Break{while...};
               end
             else Break{while...};
           end
-        else If Str[i] = FormatSettings.QuoteChar then
+        else If Str[i] = Settings.QuoteChar then
           begin
             If Quoted then
               Break{while...};
@@ -726,20 +726,21 @@ For i := Low(def_ShortDayNames) to High(def_ShortDayNames) do
   Sett.FormatSettings.ShortDayNames[i] := def_ShortDayNames[i];
 For i := Low(def_LongDayNames) to High(def_LongDayNames) do
   Sett.FormatSettings.LongDayNames[i] := def_LongDayNames[i];
-// ini file formatting options
-Sett.IniFormat.EscapeChar       := TIFXChar('\');
-Sett.IniFormat.QuoteChar        := TIFXChar('"');
-Sett.IniFormat.NumericChar      := TIFXChar('#');
-Sett.IniFormat.ForceQuote       := False;
-Sett.IniFormat.CommentChar      := TIFXChar(';');
-Sett.IniFormat.SectionStartChar := TIFXChar('[');
-Sett.IniFormat.SectionEndChar   := TIFXChar(']');
-Sett.IniFormat.ValueDelimChar   := TIFXChar('=');
-Sett.IniFormat.WhiteSpaceChar   := TIFXChar(' ');
-Sett.IniFormat.KeyWhiteSpace    := True;
-Sett.IniFormat.ValueWhiteSpace  := True;
-Sett.IniFormat.ValueWrapLength  := 0;   // < min line length = unlimited
-Sett.IniFormat.LineBreak        := StrToIFXStr(sLineBreak);
+// textual ini file options
+Sett.TextIniSettings.EscapeChar         := TIFXChar('\');
+Sett.TextIniSettings.QuoteChar          := TIFXChar('"');
+Sett.TextIniSettings.NumericChar        := TIFXChar('#');
+Sett.TextIniSettings.ForceQuote         := False;
+Sett.TextIniSettings.CommentChar        := TIFXChar(';');
+Sett.TextIniSettings.SectionStartChar   := TIFXChar('[');
+Sett.TextIniSettings.SectionEndChar     := TIFXChar(']');
+Sett.TextIniSettings.ValueDelimChar     := TIFXChar('=');
+Sett.TextIniSettings.WhiteSpaceChar     := TIFXChar(' ');
+Sett.TextIniSettings.KeyWhiteSpace      := True;
+Sett.TextIniSettings.ValueWhiteSpace    := True;
+Sett.TextIniSettings.ValueWrapLength    := 0;   // < min line length = unlimited
+Sett.TextIniSettings.LineBreak          := StrToIFXStr(sLineBreak);
+Sett.TextIniSettings.WriteByteOrderMask := False;
 // other fields
 Sett.FullNameEval          := True;
 Sett.ReadOnly              := False;
@@ -749,7 +750,6 @@ Sett.DuplicityRenameNewStr := TIFXString('_new');
 Sett.WorkingStyle          := iwsStandalone;
 Sett.WorkingStream         := nil;
 Sett.WorkingFile           := '';
-Sett.WriteByteOrderMask    := False;
 end;
 
 {===============================================================================

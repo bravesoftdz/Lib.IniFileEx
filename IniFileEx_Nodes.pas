@@ -571,7 +571,7 @@ case fValueEncoding of
   iveHexadecimal,
   iveNumber:      fValueStr := WideEncode(bteHexadecimal,PIFXChar(fValueData.StringValue),
                                           Length(fValueData.StringValue) * SizeOf(TIFXChar),False,False);
-  iveDefault:     fValueStr := IFXEncodeString(fValueData.StringValue,fSettingsPtr^.IniFormat);
+  iveDefault:     fValueStr := IFXEncodeString(fValueData.StringValue,fSettingsPtr^.TextIniSettings);
 else
   fValueStr := WideEncode(IFXEncFromValueEnc(fValueEncoding),PIFXChar(fValueData.StringValue),
                           Length(fValueData.StringValue) * SizeOf(TIFXChar),False,False);
@@ -1057,7 +1057,7 @@ If Length(fValueStr) > 0 then
         end;
       end;
   else
-    fValueData.StringValue := IFXDecodeString(fValueStr,fSettingsPtr^.IniFormat);
+    fValueData.StringValue := IFXDecodeString(fValueStr,fSettingsPtr^.TextIniSettings);
     fValueEncoding := iveDefault;
   end
 else FreeData;

@@ -158,7 +158,7 @@ var
 begin
 If fStream.Position <> fEmptyLinePos then
   begin
-    TempStr := IFXStrToUTF8(fSettingsPtr^.IniFormat.LineBreak);
+    TempStr := IFXStrToUTF8(fSettingsPtr^.TextIniSettings.LineBreak);
     Result := TMemSize(Stream_WriteBuffer(fStream,PUTF8Char(TempStr)^,Length(TempStr) * SizeOf(UTF8Char)));
     fEmptyLinePos := fStream.Position;
   end
@@ -174,7 +174,7 @@ begin
 If Length(Str) > 0 then
   begin
     If LineBreak then
-      TempStr := IFXStrToUTF8(Str + fSettingsPtr^.IniFormat.LineBreak)
+      TempStr := IFXStrToUTF8(Str + fSettingsPtr^.TextIniSettings.LineBreak)
     else
       TempStr := IFXStrToUTF8(Str);
     If Length(TempStr) > 0 then
@@ -209,26 +209,26 @@ var
 begin
 Result := Text_WriteString(ConstructCommentBlock(KeyNode.Comment));
 LineStr := ConstructKeyValueLine(KeyNode,ValStart);
-If (fSettingsPtr^.IniFormat.ValueWrapLength > IFX_INI_MINLINELENGTH) and
-  ((Length(LineStr) - ValStart) >= fSettingsPtr^.IniFormat.ValueWrapLength) and
+If (fSettingsPtr^.TextIniSettings.ValueWrapLength > IFX_INI_MINLINELENGTH) and
+  ((Length(LineStr) - ValStart) >= fSettingsPtr^.TextIniSettings.ValueWrapLength) and
   (KeyNode.ValueType in [ivtUndecided,ivtString,ivtBinary]) then
   begin
     // write key and delimiter
     Inc(Result,Text_WriteString(Copy(LineStr,1,ValStart - 1),False));
     // compute how much breaks there has to be
-    Cntr := Ceil((Length(LineStr) - ValStart) / (fSettingsPtr^.IniFormat.ValueWrapLength - 1)) - 1;
+    Cntr := Ceil((Length(LineStr) - ValStart) / (fSettingsPtr^.TextIniSettings.ValueWrapLength - 1)) - 1;
     // write blocks
     For i := 0 to Pred(Cntr) do
       begin
         Inc(Result,Text_WriteString(
-          Copy(LineStr,i * (fSettingsPtr^.IniFormat.ValueWrapLength - 1) + ValStart,
-            (fSettingsPtr^.IniFormat.ValueWrapLength - 1)),False));
-        Inc(Result,Text_WriteString(fSettingsPtr^.IniFormat.EscapeChar + fSettingsPtr^.IniFormat.LineBreak,False));
+          Copy(LineStr,i * (fSettingsPtr^.TextIniSettings.ValueWrapLength - 1) + ValStart,
+            (fSettingsPtr^.TextIniSettings.ValueWrapLength - 1)),False));
+        Inc(Result,Text_WriteString(fSettingsPtr^.TextIniSettings.EscapeChar + fSettingsPtr^.TextIniSettings.LineBreak,False));
       end;
     // write last block  
     Inc(Result,Text_WriteString(
-      Copy(LineStr,Cntr * (fSettingsPtr^.IniFormat.ValueWrapLength - 1) + ValStart,
-        Length(LineStr) - ((Cntr * (fSettingsPtr^.IniFormat.ValueWrapLength - 1)) + ValStart) + 1),
+      Copy(LineStr,Cntr * (fSettingsPtr^.TextIniSettings.ValueWrapLength - 1) + ValStart,
+        Length(LineStr) - ((Cntr * (fSettingsPtr^.TextIniSettings.ValueWrapLength - 1)) + ValStart) + 1),
       Length(KeyNode.InlineComment) <= 0));
   end
 else Inc(Result,Text_WriteString(ConstructKeyValueLine(KeyNode,ValStart),Length(KeyNode.InlineComment) <= 0));
@@ -240,7 +240,7 @@ end;
 procedure TIFXParser.Text_AddToLastComment(const Comment: TIFXString);
 begin
 If Length(fLastComment) > 0 then
-  fLastComment := fLastComment + fSettingsPtr^.IniFormat.LineBreak + Comment
+  fLastComment := fLastComment + fSettingsPtr^.TextIniSettings.LineBreak + Comment
 else
   fLastComment := Comment;
 end;
@@ -274,9 +274,9 @@ begin
 // select how to parse the line according to first character
 If Length(fProcessedLine) > 0 then
   begin
-    If fProcessedLine[1] = fSettingsPtr^.IniFormat.CommentChar then
+    If fProcessedLine[1] = fSettingsPtr^.TextIniSettings.CommentChar then
       Text_ReadCommentLine
-    else If fProcessedLine[1] = fSettingsPtr^.IniFormat.SectionStartChar then
+    else If fProcessedLine[1] = fSettingsPtr^.TextIniSettings.SectionStartChar then
       Text_ReadSectionLine
     else
       // invalid lines will fall to key parser
@@ -323,7 +323,7 @@ begin
 // find closing character; if not present, discard line
 p := -1;
 For i := 1 to Length(fProcessedLine) do
-  If fProcessedLine[i] = fSettingsPtr^.IniFormat.SectionEndChar then
+  If fProcessedLine[i] = fSettingsPtr^.TextIniSettings.SectionEndChar then
     begin
       p := i;
       Break{For i};
@@ -335,7 +335,7 @@ If p > 0 then
     // search for an inline comment
     ICmnt := '';
     For i := (p + 1) to Length(fProcessedLine) do
-      If fProcessedLine[i] = fSettingsPtr^.IniFormat.CommentChar then
+      If fProcessedLine[i] = fSettingsPtr^.TextIniSettings.CommentChar then
         begin
           // everything after comment mark is assumed to be an inline comment
           ICmnt := Copy(fProcessedLine,i + 1,Length(fProcessedLine) - i);
@@ -426,16 +426,16 @@ var
         AfterVal := False;
         For ii := 1 to Length(FromStr) do
           begin
-            If (FromStr[ii] = fSettingsPtr^.IniFormat.EscapeChar) and not Escaped then
+            If (FromStr[ii] = fSettingsPtr^.TextIniSettings.EscapeChar) and not Escaped then
               Escaped := True
-            else If (FromStr[ii] = fSettingsPtr^.IniFormat.QuoteChar) and not Escaped and not AfterVal then
+            else If (FromStr[ii] = fSettingsPtr^.TextIniSettings.QuoteChar) and not Escaped and not AfterVal then
               begin
                 If Quoted then
                   AfterVal := True;
                 Quoted := not Quoted;
                 Escaped := False;
               end
-            else If (FromStr[ii] = fSettingsPtr^.IniFormat.CommentChar) and not Quoted then
+            else If (FromStr[ii] = fSettingsPtr^.TextIniSettings.CommentChar) and not Quoted then
               begin
                 // everything after comment mark is assumed to be an inline comment
                 Result := Copy(FromStr,ii + 1,Length(FromStr) - ii);
@@ -453,7 +453,7 @@ begin
 // get position of value delimiter
 p := -1;
 For i := 1 to Length(fProcessedLine) do
-  If fProcessedLine[i] = fSettingsPtr^.IniFormat.ValueDelimChar then
+  If fProcessedLine[i] = fSettingsPtr^.TextIniSettings.ValueDelimChar then
     begin
       p := i;
       Break{For i};
@@ -461,8 +461,8 @@ For i := 1 to Length(fProcessedLine) do
 If p > 0 then
   begin
     // everything in front of delimiter is key, everything behind is a value and potentially inline comment
-    KeyName := IFXTrimStr(Copy(fProcessedLine,1,p - 1),fSettingsPtr^.IniFormat.WhiteSpaceChar);
-    fProcessedLine := IFXTrimStr(Copy(fProcessedLine,p + 1,Length(fProcessedLine) - p),fSettingsPtr^.IniFormat.WhiteSpaceChar);
+    KeyName := IFXTrimStr(Copy(fProcessedLine,1,p - 1),fSettingsPtr^.TextIniSettings.WhiteSpaceChar);
+    fProcessedLine := IFXTrimStr(Copy(fProcessedLine,p + 1,Length(fProcessedLine) - p),fSettingsPtr^.TextIniSettings.WhiteSpaceChar);
     KeyCmnt := Text_ConsumeLastComment;
     // extract inline comment
     ICmnt := ExtractInlineComment(fProcessedLine);
@@ -933,7 +933,7 @@ If Length(CommentStr) > 0 then
       begin
         If Ord(CommentStr[i]) in [10,13] then
           begin
-            Inc(Temp,1{comment mark} + Length(fSettingsPtr^.IniFormat.LineBreak));
+            Inc(Temp,1{comment mark} + Length(fSettingsPtr^.TextIniSettings.LineBreak));
             If i < Length(CommentStr) then
               If (Ord(CommentStr[i + 1]) in [10,13]) and
                 (CommentStr[i] <> CommentStr[i + 1]) then
@@ -947,7 +947,7 @@ If Length(CommentStr) > 0 then
     SetLength(Result,Temp);
     i := 1;
     Temp := 2;  // will be used to index result string
-    Result[1] := fSettingsPtr^.IniFormat.CommentChar;
+    Result[1] := fSettingsPtr^.TextIniSettings.CommentChar;
     while i <= Length(CommentStr) do
       begin
         If Ord(CommentStr[i]) in [10,13] then
@@ -956,10 +956,10 @@ If Length(CommentStr) > 0 then
               If (Ord(CommentStr[i + 1]) in [10,13]) and
                 (CommentStr[i] <> CommentStr[i + 1]) then
                 Inc(i);
-            For j := 0 to Pred(Length(fSettingsPtr^.IniFormat.LineBreak)) do
-              Result[Temp + j] := fSettingsPtr^.IniFormat.LineBreak[j + 1];
-            Inc(Temp,Length(fSettingsPtr^.IniFormat.LineBreak));
-            Result[Temp] := fSettingsPtr^.IniFormat.CommentChar;
+            For j := 0 to Pred(Length(fSettingsPtr^.TextIniSettings.LineBreak)) do
+              Result[Temp + j] := fSettingsPtr^.TextIniSettings.LineBreak[j + 1];
+            Inc(Temp,Length(fSettingsPtr^.TextIniSettings.LineBreak));
+            Result[Temp] := fSettingsPtr^.TextIniSettings.CommentChar;
           end
         else Result[Temp] := CommentStr[i];
         Inc(i);
@@ -973,8 +973,8 @@ end;
 Function TIFXParser.ConstructSectionName(SectionNode: TIFXSectionNode): TIFXString;
 begin
 SetLength(Result,Length(SectionNode.NameStr) + 2{section name start and end char});
-Result[1] := fSettingsPtr^.IniFormat.SectionStartChar;
-Result[Length(Result)] := fSettingsPtr^.IniFormat.SectionEndChar;
+Result[1] := fSettingsPtr^.TextIniSettings.SectionStartChar;
+Result[Length(Result)] := fSettingsPtr^.TextIniSettings.SectionEndChar;
 If Length(SectionNode.NameStr) > 0 then
   Move(PIFXChar(SectionNode.NameStr)^,Result[2],Length(SectionNode.NameStr) * SizeOf(TIFXChar));
 end;
@@ -987,9 +987,9 @@ var
 begin
 // get length of the resulting string
 Temp := Length(KeyNode.NameStr) + Length(KeyNode.ValueStr) + 1{ValueDelimChar};
-If fSettingsPtr^.IniFormat.KeyWhiteSpace then
+If fSettingsPtr^.TextIniSettings.KeyWhiteSpace then
   Inc(Temp{WhiteSpaceChar});
-If fSettingsPtr^.IniFormat.ValueWhiteSpace then
+If fSettingsPtr^.TextIniSettings.ValueWhiteSpace then
   Inc(Temp{WhiteSpaceChar});
 SetLength(Result,Temp);
 // build resulting string
@@ -997,16 +997,16 @@ Temp := 1;
 If Length(KeyNode.NameStr) > 0 then
   Move(KeyNode.NameStr[1],Result[Temp],Length(KeyNode.NameStr) * SizeOf(TIFXChar));
 Inc(Temp,Length(KeyNode.NameStr));
-If fSettingsPtr^.IniFormat.KeyWhiteSpace then
+If fSettingsPtr^.TextIniSettings.KeyWhiteSpace then
   begin
-    Result[Temp] := fSettingsPtr^.IniFormat.WhiteSpaceChar;
+    Result[Temp] := fSettingsPtr^.TextIniSettings.WhiteSpaceChar;
     Inc(Temp{WhiteSpaceChar});
   end;
-Result[Temp] := fSettingsPtr^.IniFormat.ValueDelimChar;
+Result[Temp] := fSettingsPtr^.TextIniSettings.ValueDelimChar;
 Inc(Temp{ValueDelimChar});
-If fSettingsPtr^.IniFormat.KeyWhiteSpace then
+If fSettingsPtr^.TextIniSettings.KeyWhiteSpace then
   begin
-    Result[Temp] := fSettingsPtr^.IniFormat.WhiteSpaceChar;
+    Result[Temp] := fSettingsPtr^.TextIniSettings.WhiteSpaceChar;
     Inc(Temp{WhiteSpaceChar});
   end;
 ValueStart := Temp;
@@ -1023,12 +1023,12 @@ begin
 If Length(CommentStr) > 0 then
   begin
     SetLength(Result,Length(CommentStr) + 2);
-    Result[1] := fSettingsPtr^.IniFormat.WhiteSpaceChar;
-    Result[2] := fSettingsPtr^.IniFormat.CommentChar;
+    Result[1] := fSettingsPtr^.TextIniSettings.WhiteSpaceChar;
+    Result[2] := fSettingsPtr^.TextIniSettings.CommentChar;
     ResPos := 3;
     For i := 1 to Length(CommentStr) do
-      If (Ord(CommentStr[i]) >= 32) and (CommentStr[i] <> fSettingsPtr^.IniFormat.CommentChar) and
-        (CommentStr[i] <> fSettingsPtr^.IniFormat.EscapeChar) then
+      If (Ord(CommentStr[i]) >= 32) and (CommentStr[i] <> fSettingsPtr^.TextIniSettings.CommentChar) and
+        (CommentStr[i] <> fSettingsPtr^.TextIniSettings.EscapeChar) then
         begin
           Result[ResPos] := CommentStr[i];
           Inc(ResPos);
@@ -1047,7 +1047,7 @@ var
 begin
 fStream := Stream;
 // write BOM if requested
-If fSettingsPtr^.WriteByteOrderMask then
+If fSettingsPtr^.TextIniSettings.WriteByteOrderMask then
   Stream_WriteBuffer(fStream,IFX_UTF8BOM,SizeOf(IFX_UTF8BOM));
 fEmptyLinePos := fStream.Position;
 // write file comment
@@ -1100,7 +1100,7 @@ try
               If Length(fProcessedLine) > 0 then
                 begin
                   // continuation of previous line
-                  If TempStr[Length(TempStr)] <> fSettingsPtr^.IniFormat.EscapeChar then
+                  If TempStr[Length(TempStr)] <> fSettingsPtr^.TextIniSettings.EscapeChar then
                     begin
                       // line terminates, process it
                       fProcessedLine := fProcessedLine + TempStr;
@@ -1112,7 +1112,7 @@ try
               else
                 begin
                   // new line
-                  If TempStr[Length(TempStr)] <> fSettingsPtr^.IniFormat.EscapeChar then
+                  If TempStr[Length(TempStr)] <> fSettingsPtr^.TextIniSettings.EscapeChar then
                     begin
                       // line will not continue
                       fProcessedLine := TempStr;

@@ -326,7 +326,7 @@ type
     property SettingsPtr: PIFXSettings read GetSettingsPtr;
     // individual settings options
     property FormatSettings: TFormatSettings read fSettings.FormatSettings write fSettings.FormatSettings;
-    property IniFormat: TIFXIniFormat read fSettings.IniFormat write fSettings.IniFormat;
+    property IniFormat: TIFXTextIniSettings read fSettings.TextIniSettings write fSettings.TextIniSettings;
     property FullNameEval: Boolean read fSettings.FullNameEval write fSettings.FullNameEval;
     property ReadOnly: Boolean read fSettings.ReadOnly write fSettings.ReadOnly;
     property DuplicityBehavior: TIFXDuplicityBehavior read fSettings.DuplicityBehavior write fSettings.DuplicityBehavior;
@@ -335,21 +335,21 @@ type
     property WorkingStyle: TIFXWorkingStyle read fSettings.WorkingStyle;
     property WorkingStream: TStream read fSettings.WorkingStream;
     property WorkingFile: String read fSettings.WorkingFile;
-    property WriteByteOrderMask: Boolean read fSettings.WriteByteOrderMask write fSettings.WriteByteOrderMask;
-    // individual Settings.IniFormat options
-    property EscapeChar: TIFXChar read fSettings.IniFormat.EscapeChar write fSettings.IniFormat.EscapeChar;
-    property QuoteChar: TIFXChar read fSettings.IniFormat.QuoteChar write fSettings.IniFormat.QuoteChar;
-    property NumericChar: TIFXChar read fSettings.IniFormat.NumericChar write fSettings.IniFormat.NumericChar;
-    property ForceQuote: Boolean read fSettings.IniFormat.ForceQuote write fSettings.IniFormat.ForceQuote;
-    property CommentChar: TIFXChar read fSettings.IniFormat.CommentChar write fSettings.IniFormat.CommentChar;
-    property SectionStartChar: TIFXChar read fSettings.IniFormat.SectionStartChar write fSettings.IniFormat.SectionStartChar;
-    property SectionEndChar: TIFXChar read fSettings.IniFormat.SectionEndChar write fSettings.IniFormat.SectionEndChar;
-    property ValueDelimChar: TIFXChar read fSettings.IniFormat.ValueDelimChar write fSettings.IniFormat.ValueDelimChar;
-    property WhiteSpaceChar: TIFXChar read fSettings.IniFormat.WhiteSpaceChar write fSettings.IniFormat.WhiteSpaceChar;
-    property KeyWhiteSpace: Boolean read fSettings.IniFormat.KeyWhiteSpace write fSettings.IniFormat.KeyWhiteSpace;
-    property ValueWhiteSpace: Boolean read fSettings.IniFormat.ValueWhiteSpace write fSettings.IniFormat.ValueWhiteSpace;
-    property ValueWrapLength: Integer read fSettings.IniFormat.ValueWrapLength write fSettings.IniFormat.ValueWrapLength;
-    property LineBreak: TIFXString read fSettings.IniFormat.LineBreak write fSettings.IniFormat.LineBreak;
+    // individual Settings.TextIniSettings options
+    property EscapeChar: TIFXChar read fSettings.TextIniSettings.EscapeChar write fSettings.TextIniSettings.EscapeChar;
+    property QuoteChar: TIFXChar read fSettings.TextIniSettings.QuoteChar write fSettings.TextIniSettings.QuoteChar;
+    property NumericChar: TIFXChar read fSettings.TextIniSettings.NumericChar write fSettings.TextIniSettings.NumericChar;
+    property ForceQuote: Boolean read fSettings.TextIniSettings.ForceQuote write fSettings.TextIniSettings.ForceQuote;
+    property CommentChar: TIFXChar read fSettings.TextIniSettings.CommentChar write fSettings.TextIniSettings.CommentChar;
+    property SectionStartChar: TIFXChar read fSettings.TextIniSettings.SectionStartChar write fSettings.TextIniSettings.SectionStartChar;
+    property SectionEndChar: TIFXChar read fSettings.TextIniSettings.SectionEndChar write fSettings.TextIniSettings.SectionEndChar;
+    property ValueDelimChar: TIFXChar read fSettings.TextIniSettings.ValueDelimChar write fSettings.TextIniSettings.ValueDelimChar;
+    property WhiteSpaceChar: TIFXChar read fSettings.TextIniSettings.WhiteSpaceChar write fSettings.TextIniSettings.WhiteSpaceChar;
+    property KeyWhiteSpace: Boolean read fSettings.TextIniSettings.KeyWhiteSpace write fSettings.TextIniSettings.KeyWhiteSpace;
+    property ValueWhiteSpace: Boolean read fSettings.TextIniSettings.ValueWhiteSpace write fSettings.TextIniSettings.ValueWhiteSpace;
+    property ValueWrapLength: Integer read fSettings.TextIniSettings.ValueWrapLength write fSettings.TextIniSettings.ValueWrapLength;
+    property LineBreak: TIFXString read fSettings.TextIniSettings.LineBreak write fSettings.TextIniSettings.LineBreak;
+    property WriteByteOrderMask: Boolean read fSettings.TextIniSettings.WriteByteOrderMask write fSettings.TextIniSettings.WriteByteOrderMask;
     property SectionCount: Integer read GetSectionCount;
     property SectionKeyCount[Index: Integer]: Integer read GetSectionKeyCount;
     property KeyCount: Integer read GetKeyCount;
@@ -965,14 +965,14 @@ If not fSettings.ReadOnly and (Ini.SectionCount > 0) then
                   fFileNode[SIdx].Comment := ExtFileNode[i].Comment;
                 idbRenameOld:
                   If Length(ExtFileNode[i].Comment) > 0 then
-                    fFileNode[SIdx].Comment := ExtFileNode[i].Comment + fSettings.IniFormat.LineBreak +
-                      fSettings.IniFormat.LineBreak + TIFXString('Old comment:') +
-                      fSettings.IniFormat.LineBreak + fFileNode[SIdx].Comment;
+                    fFileNode[SIdx].Comment := ExtFileNode[i].Comment + fSettings.TextIniSettings.LineBreak +
+                      fSettings.TextIniSettings.LineBreak + TIFXString('Old comment:') +
+                      fSettings.TextIniSettings.LineBreak + fFileNode[SIdx].Comment;
                 idbRenameNew:
                   If Length(ExtFileNode[i].Comment) > 0 then
-                    fFileNode[SIdx].Comment := fFileNode[SIdx].Comment + fSettings.IniFormat.LineBreak +
-                      fSettings.IniFormat.LineBreak + TIFXString('New comment:') +
-                      fSettings.IniFormat.LineBreak + ExtFileNode[i].Comment;
+                    fFileNode[SIdx].Comment := fFileNode[SIdx].Comment + fSettings.TextIniSettings.LineBreak +
+                      fSettings.TextIniSettings.LineBreak + TIFXString('New comment:') +
+                      fSettings.TextIniSettings.LineBreak + ExtFileNode[i].Comment;
               else
                 {idbDrop} // do nothing
               end
