@@ -1,3 +1,41 @@
+{-------------------------------------------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-------------------------------------------------------------------------------}
+{===============================================================================
+
+  Extended INI file
+
+    Parser class used for writing and reading of actual INI files
+
+  ©František Milt 2018-__-__
+
+  Version 0.9a
+
+  NOTE - library needs extensive testing
+
+  Dependencies:
+    AuxTypes            - github.com/ncs-sniper/Lib.AuxTypes
+    AuxClasses          - github.com/ncs-sniper/Lib.AuxClasses
+    CRC32               - github.com/ncs-sniper/Lib.CRC32
+    StrRect             - github.com/ncs-sniper/Lib.StrRect
+    BinTextEnc          - github.com/ncs-sniper/Lib.BinTextEnc
+    FloatHex            - github.com/ncs-sniper/Lib.FloatHex
+    ExplicitStringLists - github.com/ncs-sniper/Lib.ExplicitStringLists
+    BinaryStreaming     - github.com/ncs-sniper/Lib.BinaryStreaming
+    SimpleCompress      - github.com/ncs-sniper/Lib.SimpleCompress
+    MemoryBuffer        - github.com/ncs-sniper/Lib.MemoryBuffer
+    ZLib                - github.com/ncs-sniper/Bnd.ZLib
+    ZLibUtils           - github.com/ncs-sniper/Lib.ZLibUtils
+    AES                 - github.com/ncs-sniper/Lib.AES
+  * SimpleCPUID         - github.com/ncs-sniper/Lib.SimpleCPUID
+
+  SimpleCPUID is required only when PurePascal symbol is not defined.
+
+===============================================================================}
 unit IniFileEx;
 
 {$INCLUDE '.\IniFileEx_defs.inc'}

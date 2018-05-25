@@ -21,8 +21,26 @@
   {$IFEND}
 {$ENDIF}
 
+{
+  AllowLowLevelAccess
+
+  When defined, TIniFileEx objects have public properties and methods that can
+  be used to access low-level structures of the object (nodes), otherwise these
+  methods and properties are not present.
+
+  Not defined by default.
+}
 {.$DEFINE AllowLowLevelAccess}
 
+{
+  AllowDefaultStringOverloads
+
+  When this symbol is defined and symbol Unicode is NOT defined, the TIniFileEx
+  offers overloaded methods that accept normal string type in addition to
+  methods accepting type TIFXString.
+
+  Defined by default.
+}
 {$DEFINE AllowDefaultStringOverloads}
 
 {$IF not Defined(Unicode) and Defined(AllowDefaultStringOverloads)}
