@@ -102,7 +102,7 @@ implementation
 
 uses
   SysUtils, Math,
-  BinaryStreaming, StrRect,
+  BinaryStreaming, StrRect, SimpleCompress, AES,
   IniFileEx_Utils;
 
 {
@@ -1147,7 +1147,12 @@ begin
 // prepare file header, size will be filled later
 fBinFileHeader.Signature := IFX_BINI_SIGNATURE_FILE;
 fBinFileHeader.Structure := IFX_BINI_STRUCT_0;  // later implement selectable
+// set data flags
 fBinFileHeader.Flags := 0;
+If fSettingsPtr^.BinaryIniSettings.CompressData then
+  fBinFileHeader.Flags := fBinFileHeader.Flags or IFX_BINI_FLAGS_ZLIB_COMPRESS;
+If fSettingsPtr^.BinaryIniSettings.DataEncryption = ideAES then
+  fBinFileHeader.Flags := fBinFileHeader.Flags or IFX_BINI_FLAGS_AES_ENCRYPT;
 // prepare stream for data
 fStream := TMemoryStream.Create;
 try
@@ -1159,12 +1164,25 @@ try
         Stream_WriteUInt32(fStream,UInt32(fFileNode.SectionCount));
         For i := fFileNode.LowIndex to fFileNode.HighIndex do
           Binary_0000_WriteSection(fFileNode[i]);
+        // data compression
+        If fSettingsPtr^.BinaryIniSettings.CompressData then
+          begin
+            fStream.Seek(0,soBeginning);
+            ZCompressStream(fStream);
+          end;
+        // AES data encryption
+        with fSettingsPtr^.BinaryIniSettings do
+          If DataEncryption = ideAES then
+            with AES.TAESCipherAccelerated.Create(AESEncryptionKey,AESEncryptionVector,r128bit,cmEncrypt) do
+            try
+              fStream.Seek(0,soBeginning);
+              ProcessStream(fStream);
+            finally
+              Free;
+            end;
         fBinFileHeader.DataSize := UInt64(fStream.Size);
         // save header and complete data to output stream
-        Stream_WriteBuffer(Stream,fBinFileHeader,SizeOf(TIFXBiniFileHeader));
-      {
-        data compression and encryption goes here <<<
-      }
+        Stream_WriteBuffer(Stream,fBinFileHeader,SizeOf(TIFXBiniFileHeader));                
         Stream_WriteBuffer(Stream,TMemoryStream(fStream).Memory^,fStream.Size);
       end;
   else
@@ -1190,10 +1208,23 @@ If (Stream.Size - Stream.Position) >= SizeOf(TIFXBiniFileHeader) then
             fStream := TMemoryStream.Create;
             try
               fStream.CopyFrom(Stream,fBinFileHeader.DataSize);
+              // AES data decryption
+              If (fBinFileHeader.Flags and IFX_BINI_FLAGS_AES_ENCRYPT) <> 0 then
+                with fSettingsPtr^.BinaryIniSettings do
+                  with AES.TAESCipherAccelerated.Create(AESEncryptionKey,AESEncryptionVector,r128bit,cmDecrypt) do
+                  try
+                    fStream.Seek(0,soBeginning);
+                    ProcessStream(fStream);
+                  finally
+                    Free;
+                  end;
+              // data decompression
+              If (fBinFileHeader.Flags and IFX_BINI_FLAGS_ZLIB_COMPRESS) <> 0 then
+                begin
+                  fStream.Seek(0,soBeginning);
+                  ZDecompressStream(fStream);
+                end;
               fStream.Seek(0,soBeginning);
-            {
-              data decompression and decryption goes here <<<
-            }
               case fBinFileHeader.Structure of
                 IFX_BINI_STRUCT_0:  Binary_0000_ReadData;
               else

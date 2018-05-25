@@ -111,6 +111,17 @@ type
     WriteByteOrderMask: Boolean;
   end;
 
+  TIFXDataEncryption = (ideNone,ideAES);
+
+  TIFXAESEncVector = array[0..15] of Byte;
+
+  TIFXBinaryIniSettings = record
+    CompressData:         Boolean;
+    DataEncryption:       TIFXDataEncryption;
+    AESEncryptionKey:     TIFXAESEncVector;
+    AESEncryptionVector:  TIFXAESEncVector;
+  end;
+
   TIFXDuplicityBehavior = (idbDrop,idbReplace,idbRenameOld,idbRenameNew);
 
   TIFXWorkingStyle = (iwsStandalone,iwsOnStream,iwsOnFile);
@@ -118,6 +129,7 @@ type
   TIFXSettings = record
     FormatSettings:         TFormatSettings;
     TextIniSettings:        TIFXTextIniSettings;
+    BinaryIniSettings:      TIFXBinaryIniSettings;
     FullNameEval:           Boolean;
     ReadOnly:               Boolean;
     DuplicityBehavior:      TIFXDuplicityBehavior;

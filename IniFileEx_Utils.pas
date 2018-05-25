@@ -727,20 +727,31 @@ For i := Low(def_ShortDayNames) to High(def_ShortDayNames) do
 For i := Low(def_LongDayNames) to High(def_LongDayNames) do
   Sett.FormatSettings.LongDayNames[i] := def_LongDayNames[i];
 // textual ini file options
-Sett.TextIniSettings.EscapeChar         := TIFXChar('\');
-Sett.TextIniSettings.QuoteChar          := TIFXChar('"');
-Sett.TextIniSettings.NumericChar        := TIFXChar('#');
-Sett.TextIniSettings.ForceQuote         := False;
-Sett.TextIniSettings.CommentChar        := TIFXChar(';');
-Sett.TextIniSettings.SectionStartChar   := TIFXChar('[');
-Sett.TextIniSettings.SectionEndChar     := TIFXChar(']');
-Sett.TextIniSettings.ValueDelimChar     := TIFXChar('=');
-Sett.TextIniSettings.WhiteSpaceChar     := TIFXChar(' ');
-Sett.TextIniSettings.KeyWhiteSpace      := True;
-Sett.TextIniSettings.ValueWhiteSpace    := True;
-Sett.TextIniSettings.ValueWrapLength    := 0;   // < min line length = unlimited
-Sett.TextIniSettings.LineBreak          := StrToIFXStr(sLineBreak);
-Sett.TextIniSettings.WriteByteOrderMask := False;
+with Sett.TextIniSettings do
+  begin
+    EscapeChar         := TIFXChar('\');
+    QuoteChar          := TIFXChar('"');
+    NumericChar        := TIFXChar('#');
+    ForceQuote         := False;
+    CommentChar        := TIFXChar(';');
+    SectionStartChar   := TIFXChar('[');
+    SectionEndChar     := TIFXChar(']');
+    ValueDelimChar     := TIFXChar('=');
+    WhiteSpaceChar     := TIFXChar(' ');
+    KeyWhiteSpace      := True;
+    ValueWhiteSpace    := True;
+    ValueWrapLength    := 0;   // < min line length = unlimited
+    LineBreak          := StrToIFXStr(sLineBreak);
+    WriteByteOrderMask := False;
+  end;
+// binary ini file settings
+with Sett.BinaryIniSettings do
+  begin
+    CompressData   := True;
+    DataEncryption := ideNone;
+    FillChar(AESEncryptionKey,SizeOf(TIFXAESEncVector),0);
+    FillChar(AESEncryptionVector,SizeOf(TIFXAESEncVector),0);
+  end;
 // other fields
 Sett.FullNameEval          := True;
 Sett.ReadOnly              := False;

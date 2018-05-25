@@ -326,7 +326,8 @@ type
     property SettingsPtr: PIFXSettings read GetSettingsPtr;
     // individual settings options
     property FormatSettings: TFormatSettings read fSettings.FormatSettings write fSettings.FormatSettings;
-    property IniFormat: TIFXTextIniSettings read fSettings.TextIniSettings write fSettings.TextIniSettings;
+    property TextIniSettings: TIFXTextIniSettings read fSettings.TextIniSettings write fSettings.TextIniSettings;
+    property BinaryIniSettings: TIFXBinaryIniSettings read fSettings.BinaryIniSettings write fSettings.BinaryIniSettings;
     property FullNameEval: Boolean read fSettings.FullNameEval write fSettings.FullNameEval;
     property ReadOnly: Boolean read fSettings.ReadOnly write fSettings.ReadOnly;
     property DuplicityBehavior: TIFXDuplicityBehavior read fSettings.DuplicityBehavior write fSettings.DuplicityBehavior;
@@ -350,6 +351,11 @@ type
     property ValueWrapLength: Integer read fSettings.TextIniSettings.ValueWrapLength write fSettings.TextIniSettings.ValueWrapLength;
     property LineBreak: TIFXString read fSettings.TextIniSettings.LineBreak write fSettings.TextIniSettings.LineBreak;
     property WriteByteOrderMask: Boolean read fSettings.TextIniSettings.WriteByteOrderMask write fSettings.TextIniSettings.WriteByteOrderMask;
+    // individual Settings.BinaryIniSettings
+    property CompressData: Boolean read fSettings.BinaryIniSettings.CompressData write fSettings.BinaryIniSettings.CompressData;
+    property DataEncryption: TIFXDataEncryption read fSettings.BinaryIniSettings.DataEncryption write fSettings.BinaryIniSettings.DataEncryption;
+    property AESEncryptionKey: TIFXAESEncVector read fSettings.BinaryIniSettings.AESEncryptionKey write fSettings.BinaryIniSettings.AESEncryptionKey;
+    property AESEncryptionVector: TIFXAESEncVector read fSettings.BinaryIniSettings.AESEncryptionVector write fSettings.BinaryIniSettings.AESEncryptionVector;
     property SectionCount: Integer read GetSectionCount;
     property SectionKeyCount[Index: Integer]: Integer read GetSectionKeyCount;
     property KeyCount: Integer read GetKeyCount;
