@@ -9,7 +9,7 @@
 
   Extended INI file
 
-    Parser class used for writing and reading of actual INI files
+    Main class
 
   ©František Milt 2018-__-__
 

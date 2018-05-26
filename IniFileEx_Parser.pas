@@ -36,6 +36,76 @@
   SimpleCPUID is required only when PurePascal symbol is not defined.
 
 ===============================================================================}
+{-------------------------------------------------------------------------------
+
+  Structure of binary INI (BINI) files
+
+  All primitives are stored with little endianess.
+  Strings are UTF8-encoded and are stored with explicit length the
+  following way:
+
+    begin
+      UInt32      - string length (number of characters, NOT code points)
+      UTF8Char[]  - array of UTF8 characters
+    end;
+
+  BINI files have following structure:
+
+    begin
+      UInt32    - signature (0x494E4942)    --
+      UInt16    - data structure number      |- Header
+      UInt16    - flags                      |
+      UInt64    - data size                 --
+      []        - data
+    end;
+
+  Header is common to all BINI files, but data can have different structure,
+  depending on data structure number (format).
+
+  Following flags are implemented:
+
+    (0x0001) IFX_BINI_FLAGS_ZLIB_COMPRESS   - data will be compressed into
+                                              zlib stream
+    (0x0002) IFX_BINI_FLAGS_AES_ENCRYPT     - data will be encrypted using AES
+                                              cypher and key and init vector
+                                              from ini settings
+
+  If both compression and encryption are selected, the data are first compressed
+  and then encrypted.
+
+  As for data format, only one is currently implemented - format 0 of following
+  structure:
+
+  format_0
+    begin
+      String[]  - file comment
+      UInt32    - section count
+      Section[] - array of sections
+    end;
+
+  Section:
+    begin
+      UInt32    - signature (0x54434553)
+      String[]  - section name
+      String[]  - section comment
+      String[]  - section inline comment
+      UInt32    - key count
+      Key[]     - array of keys
+    end;
+
+  Key:
+    begin
+      UInt32    - signature (0x5659454B)
+      String[]  - key name
+      String[]  - key comment
+      String[]  - key inline comment
+      UInt8     - value encoding (obtained by calling IFXValueEncodingToByte)
+      UInt8     - value type (obtained by calling IFXValueTypeToByte)
+      []        - data (size and actual type depends on the value type; if value
+                  type is undecided, it contains ValueStr)
+    end;
+    
+-------------------------------------------------------------------------------}
 unit IniFileEx_Parser;
 
 {$INCLUDE '.\IniFileEx_defs.inc'}
@@ -73,7 +143,7 @@ const
 
   IFX_BINI_MINFILESIZE = SizeOf(TIFXBiniFileHeader);
 
-  IFX_BINI_STRUCT_0 = UInt16(0);  // more may be added in the future
+  IFX_BINI_DATASTRUCT_0 = UInt16(0);  // more may be added in the future
 
   IFX_BINI_FLAGS_ZLIB_COMPRESS = UInt16($0001); // not yet implemented
   IFX_BINI_FLAGS_AES_ENCRYPT   = UInt16($0002); // not yet implemented
@@ -142,41 +212,6 @@ uses
   SysUtils, Math,
   BinaryStreaming, StrRect, SimpleCompress, AES,
   IniFileEx_Utils;
-
-{
-  Binary INI format:
-    UInt32    - signature (BINI)
-    UInt16    - file structure (number)
-    UInt16    - flags
-    UInt64    - data size
-    []        - data
-
-  Data:
-    String[]  - file comment
-    UInt32    - section count
-    Section[] - array of sections
-
-  Section:
-    UInt32    - signature (SECT)
-    String[]  - section name
-    String[]  - section comment
-    String[]  - section inline comment
-    UInt32    - key count
-    Key[]     - array of keys
-
-  Key:
-    UInt32    - signature (KEYV)
-    String[]  - key name
-    String[]  - key comment
-    String[]  - key inline comment
-    UInt8     - value encoding
-    UInt8     - value type
-    []        - data (size depending on value type)
-
-  String:
-    UInt32      - string length
-    UTF8Char[]  - array of UTF8 characters
-}
 
 {===============================================================================
 --------------------------------------------------------------------------------
@@ -1186,7 +1221,7 @@ var
 begin
 // prepare file header, size will be filled later
 fBinFileHeader.Signature := IFX_BINI_SIGNATURE_FILE;
-fBinFileHeader.Structure := IFX_BINI_STRUCT_0;  // later implement selectable
+fBinFileHeader.Structure := IFX_BINI_DATASTRUCT_0;  // later implement selectable
 // set data flags
 fBinFileHeader.Flags := 0;
 If fSettingsPtr^.BinaryIniSettings.CompressData then
@@ -1197,7 +1232,7 @@ If fSettingsPtr^.BinaryIniSettings.DataEncryption = ideAES then
 fStream := TMemoryStream.Create;
 try
   case fBinFileHeader.Structure of
-    IFX_BINI_STRUCT_0:
+    IFX_BINI_DATASTRUCT_0:
       begin
         // write data to temp stream
         Binary_0000_WriteString(fFileNode.Comment);
@@ -1266,7 +1301,7 @@ If (Stream.Size - Stream.Position) >= SizeOf(TIFXBiniFileHeader) then
                 end;
               fStream.Seek(0,soBeginning);
               case fBinFileHeader.Structure of
-                IFX_BINI_STRUCT_0:  Binary_0000_ReadData;
+                IFX_BINI_DATASTRUCT_0:  Binary_0000_ReadData;
               else
                 raise Exception.CreateFmt('TIFXParser.ReadBinary: Unknown binary format (%d).',[fBinFileHeader.Structure]);
               end;
