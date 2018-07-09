@@ -11,9 +11,9 @@
 
     Parser class used for writing and reading of actual INI files
 
-  ©František Milt 2018-__-__
+  ©František Milt 2018-07-09
 
-  Version 0.9a
+  Version 1.0
 
   NOTE - library needs extensive testing
 
@@ -67,7 +67,7 @@
     (0x0001) IFX_BINI_FLAGS_ZLIB_COMPRESS   - data will be compressed into
                                               zlib stream
     (0x0002) IFX_BINI_FLAGS_AES_ENCRYPT     - data will be encrypted using AES
-                                              cypher and key and init vector
+                                              cipher and key and init vector
                                               from ini settings
 
   If both compression and encryption are selected, the data are first compressed
@@ -76,7 +76,7 @@
   As for data format, only one is currently implemented - format 0 of following
   structure:
 
-  format_0
+  format_0:
     begin
       String[]  - file comment
       UInt32    - section count
@@ -135,7 +135,7 @@ type
 const
   IFX_UTF8BOM: packed array[0..2] of Byte = ($EF,$BB,$BF);
 
-  IFX_INI_MINLINELENGTH = 16; // minimu length of a line before it can be wrapped
+  IFX_INI_MINLINELENGTH = 16; // minimum length of a line before it can be wrapped
 
   IFX_BINI_SIGNATURE_FILE    = UInt32($494E4942); // BINI
   IFX_BINI_SIGNATURE_SECTION = UInt32($54434553); // SECT
@@ -145,8 +145,8 @@ const
 
   IFX_BINI_DATASTRUCT_0 = UInt16(0);  // more may be added in the future
 
-  IFX_BINI_FLAGS_ZLIB_COMPRESS = UInt16($0001); // not yet implemented
-  IFX_BINI_FLAGS_AES_ENCRYPT   = UInt16($0002); // not yet implemented
+  IFX_BINI_FLAGS_ZLIB_COMPRESS = UInt16($0001);
+  IFX_BINI_FLAGS_AES_ENCRYPT   = UInt16($0002);
 
 {===============================================================================
     TIFXParser - class declaration

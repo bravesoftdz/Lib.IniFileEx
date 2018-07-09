@@ -11,9 +11,9 @@
 
     Main class
 
-  ©František Milt 2018-__-__
+  ©František Milt 2018-07-09
 
-  Version 0.9a
+  Version 1.0
 
   NOTE - library needs extensive testing
 
@@ -593,9 +593,34 @@ end;
 //------------------------------------------------------------------------------
 
 constructor TIniFileEx.CreateCopy(Src: TIniFileEx);
+var
+  i:  Integer;
 begin
 inherited Create;
 fSettings := Src.Settings;
+// thread safety...
+with fSettings.FormatSettings do
+  begin
+    UniqueString(CurrencyString);
+    UniqueString(ShortDateFormat);
+    UniqueString(LongDateFormat);
+    UniqueString(TimeAMString);
+    UniqueString(TimePMString);
+    UniqueString(ShortTimeFormat);
+    UniqueString(LongTimeFormat);
+    For i := Low(ShortMonthNames) to High(ShortMonthNames) do
+      UniqueString(ShortMonthNames[i]);
+    For i := Low(LongMonthNames) to High(LongMonthNames) do
+      UniqueString(LongMonthNames[i]);
+    For i := Low(ShortDayNames) to High(ShortDayNames) do
+      UniqueString(ShortDayNames[i]);
+    For i := Low(LongDayNames) to High(LongDayNames) do
+      UniqueString(LongDayNames[i]);
+  end;
+UniqueString(fSettings.TextIniSettings.LineBreak);
+UniqueString(fSettings.DuplicityRenameOldStr);
+UniqueString(fSettings.DuplicityRenameNewStr);
+UniqueString(fSettings.WorkingFile);
 fFileNode := TIFXFileNode.CreateCopy(Src.FileNode,SectionCreateHandler,KeyCreateHandler);
 fFileNode.OnSectionCreate := SectionCreateHandler;
 fFileNode.OnSectionDestroy := SectionDestroyHandler;

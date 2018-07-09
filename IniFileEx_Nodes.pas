@@ -11,9 +11,9 @@
 
     Internal ini file structure objects (nodes)
 
-  ©František Milt 2018-__-__
+  ©František Milt 2018-07-09
 
-  Version 0.9a
+  Version 1.0
 
   NOTE - library needs extensive testing
 
@@ -1156,6 +1156,12 @@ If (fValueData.ValueType = ivtBinary) and fValueData.BinaryValueOwned then
     Move(fValueData.BinaryValuePtr^,TempPtr^,fValueData.BinaryValueSize);
     fValueData.BinaryValuePtr := TempPtr;
   end;
+// ensure thread safety
+UniqueString(fName.Str);
+UniqueString(fComment);
+UniqueString(fInlineComment);
+UniqueString(fValueStr);
+UniqueString(fValueData.StringValue);
 end;
 
 //------------------------------------------------------------------------------
@@ -1553,6 +1559,10 @@ For i := SourceNode.LowIndex to SourceNode.HighIndex do
     If Assigned(OnKeyCreate) then
       OnKeyCreate(Self,Self,TempKey);
   end;
+// ensure thread safety
+UniqueString(fName.Str);
+UniqueString(fComment);
+UniqueString(fInlineComment);
 end;
 
 //------------------------------------------------------------------------------
@@ -1857,6 +1867,8 @@ For i := SourceNode.LowIndex to SourceNode.HighIndex do
     If Assigned(OnSectionCreate) then
       OnSectionCreate(Self,TempSection);
   end;
+// ensure thread safety
+UniqueString(fComment);
 end;
 
 //------------------------------------------------------------------------------

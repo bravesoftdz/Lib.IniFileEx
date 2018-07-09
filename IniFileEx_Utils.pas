@@ -11,9 +11,9 @@
 
     Utility functions
 
-  ©František Milt 2018-__-__
+  ©František Milt 2018-07-09
 
-  Version 0.9a
+  Version 1.0
 
   NOTE - library needs extensive testing
 
@@ -467,7 +467,7 @@ else
   Temp := 1;
 For i := 1 to Length(Str) do
   case Str[i] of
-    #1..#6,#14..#31:
+    #1..#6,#14..#26,#28..#31:
       begin
         Result[Temp] := Settings.EscapeChar;
         Result[Temp + 1] := Settings.NumericChar;
@@ -478,18 +478,19 @@ For i := 1 to Length(Str) do
         Result[Temp + 5] := StrTemp[4];
         Inc(Temp,6);
       end;
-    #0,#7..#13:
+    #0,#7..#13,#27:
       begin
         Result[Temp] := Settings.EscapeChar;
         case Str[i] of
           #0:   Result[Temp + 1] := '0';  // null
-          #7:   Result[Temp + 1] := 'a';
-          #8:   Result[Temp + 1] := 'b';
+          #7:   Result[Temp + 1] := 'a';  // bell
+          #8:   Result[Temp + 1] := 'b';  // backspace
           #9:   Result[Temp + 1] := 't';  // horizontal tab
           #10:  Result[Temp + 1] := 'n';  // line feed
           #11:  Result[Temp + 1] := 'v';  // vertical tab
-          #12:  Result[Temp + 1] := 'f';
+          #12:  Result[Temp + 1] := 'f';  // form feed
           #13:  Result[Temp + 1] := 'r';  // carriage return
+          #27:  Result[Temp + 1] := 'e';  // escape
         end;
         Inc(Temp,2);
       end;
@@ -545,6 +546,7 @@ If Length(Str) > 0 then
                 'v':  SetAndAdvance(#11,2,1);
                 'f':  SetAndAdvance(#12,2,1);
                 'r':  SetAndAdvance(#13,2,1);
+                'e':  SetAndAdvance(#27,2,1);
               else
                 If Str[i + 1] = Settings.NumericChar then
                   begin
