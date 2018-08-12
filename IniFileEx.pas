@@ -86,8 +86,8 @@ type
     Function WritingValue(const Section, Key: TIFXString): TIFXKeyNode; virtual;
   public
     constructor Create; overload;
-    constructor Create(Stream: TStream); overload;
-    constructor Create(const FileName: String); overload;
+    constructor Create(Stream: TStream; ReadOnly: Boolean = False); overload;
+    constructor Create(const FileName: String; ReadOnly: Boolean = False); overload;
     constructor CreateCopy(Src: TIniFileEx); overload;
     destructor Destroy; override;
     // file/stream manipulation
@@ -570,10 +570,11 @@ end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-constructor TIniFileEx.Create(Stream: TStream);
+constructor TIniFileEx.Create(Stream: TStream; ReadOnly: Boolean = False);
 begin
 inherited Create;
 Initialize;
+fSettings.ReadOnly := ReadOnly;
 fSettings.WorkingStyle := iwsOnStream;
 fSettings.WorkingStream := Stream;
 LoadFromStream(Stream);
@@ -581,10 +582,11 @@ end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-constructor TIniFileEx.Create(const FileName: String);
+constructor TIniFileEx.Create(const FileName: String; ReadOnly: Boolean = False);
 begin
 inherited Create;
 Initialize;
+fSettings.ReadOnly := ReadOnly;
 fSettings.WorkingStyle := iwsOnFile;
 fSettings.WorkingFile := FileName;
 If FileExists(StrToRTL(FileName)) then
@@ -634,7 +636,8 @@ end;
 
 destructor TIniFileEx.Destroy;
 begin
-Flush;
+If not fSettings.ReadOnly then
+  Flush;
 Finalize;
 inherited;
 end;
@@ -643,21 +646,24 @@ end;
 
 procedure TIniFileEx.SaveToTextualStream(Stream: TStream);
 begin
-fParser.WriteTextual(Stream);
+If not fSettings.ReadOnly then
+  fParser.WriteTextual(Stream);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TIniFileEx.SaveToBinaryStream(Stream: TStream);
 begin
-fParser.WriteBinary(Stream);
+If not fSettings.ReadOnly then
+  fParser.WriteBinary(Stream);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TIniFileEx.SaveToStream(Stream: TStream);
 begin
-SaveToTextualStream(Stream);
+If not fSettings.ReadOnly then
+  SaveToTextualStream(Stream);
 end;
 
 //------------------------------------------------------------------------------
@@ -666,13 +672,16 @@ procedure TIniFileEx.SaveToTextualFile(const FileName: String);
 var
   FileStream: TFileStream;
 begin
-FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
-try
-  SaveToTextualStream(FileStream);
-  FileStream.Size := FileStream.Position;
-finally
-  FileStream.Free;
-end;
+If not fSettings.ReadOnly then
+  begin
+    FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
+    try
+      SaveToTextualStream(FileStream);
+      FileStream.Size := FileStream.Position;
+    finally
+      FileStream.Free;
+    end;
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -681,20 +690,24 @@ procedure TIniFileEx.SaveToBinaryFile(const FileName: String);
 var
   FileStream: TFileStream;
 begin
-FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
-try
-  SaveToBinaryStream(FileStream);
-  FileStream.Size := FileStream.Position;
-finally
-  FileStream.Free;
-end;
+If not fSettings.ReadOnly then
+  begin
+    FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
+    try
+      SaveToBinaryStream(FileStream);
+      FileStream.Size := FileStream.Position;
+    finally
+      FileStream.Free;
+    end;
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TIniFileEx.SaveToFile(const FileName: String);
 begin
-SaveToTextualFile(FileName);
+If not fSettings.ReadOnly then
+  SaveToTextualFile(FileName);
 end;
 
 //------------------------------------------------------------------------------
@@ -770,23 +783,26 @@ var
   ExtIniFile: TIniFileEx;
   StreamPos:  Int64;
 begin
-ExtIniFile := TIniFileEx.Create;
-try
-  ExtIniFile.Settings := fSettings;
-  ExtIniFile.ReadOnly := False;
-  ExtIniFile.SettingsPtr^.WorkingStyle := iwsStandalone;
-  StreamPos := Stream.Position;
-  try
-    ExtIniFile.LoadFromTextualStream(Stream);
-    ExtIniFile.Append(Self);
-  finally
-    Stream.Position := StreamPos;
+If not fSettings.ReadOnly then
+  begin
+    ExtIniFile := TIniFileEx.Create;
+    try
+      ExtIniFile.Settings := fSettings;
+      ExtIniFile.ReadOnly := False;
+      ExtIniFile.SettingsPtr^.WorkingStyle := iwsStandalone;
+      StreamPos := Stream.Position;
+      try
+        ExtIniFile.LoadFromTextualStream(Stream);
+        ExtIniFile.Append(Self);
+      finally
+        Stream.Position := StreamPos;
+      end;
+      ExtIniFile.SaveToTextualStream(Stream);
+      Stream.Size := Stream.Position;
+    finally
+      ExtIniFile.Free;
+    end;
   end;
-  ExtIniFile.SaveToTextualStream(Stream);
-  Stream.Size := Stream.Position;
-finally
-  ExtIniFile.Free;
-end;
 end;
 
 //------------------------------------------------------------------------------
@@ -796,33 +812,39 @@ var
   ExtIniFile: TIniFileEx;
   StreamPos:  Int64;
 begin
-ExtIniFile := TIniFileEx.Create;
-try
-  ExtIniFile.Settings := fSettings;
-  ExtIniFile.ReadOnly := False;
-  ExtIniFile.SettingsPtr^.WorkingStyle := iwsStandalone;
-  StreamPos := Stream.Position;
-  try
-    ExtIniFile.LoadFromBinaryStream(Stream);
-    ExtIniFile.Append(Self);
-  finally
-    Stream.Position := StreamPos;
-  end;    
-  ExtIniFile.SaveToBinaryStream(Stream);
-  Stream.Size := Stream.Position;
-finally
-  ExtIniFile.Free;
-end;
+If not fSettings.ReadOnly then
+  begin
+    ExtIniFile := TIniFileEx.Create;
+    try
+      ExtIniFile.Settings := fSettings;
+      ExtIniFile.ReadOnly := False;
+      ExtIniFile.SettingsPtr^.WorkingStyle := iwsStandalone;
+      StreamPos := Stream.Position;
+      try
+        ExtIniFile.LoadFromBinaryStream(Stream);
+        ExtIniFile.Append(Self);
+      finally
+        Stream.Position := StreamPos;
+      end;
+      ExtIniFile.SaveToBinaryStream(Stream);
+      Stream.Size := Stream.Position;
+    finally
+      ExtIniFile.Free;
+    end;
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TIniFileEx.AppendToStream(Stream: TStream);
 begin
-If fParser.IsBinaryIniStream(Stream) then
-  AppendToBinaryStream(Stream)
-else
-  AppendToTextualStream(Stream);
+If not fSettings.ReadOnly then
+  begin
+    If fParser.IsBinaryIniStream(Stream) then
+      AppendToBinaryStream(Stream)
+    else
+      AppendToTextualStream(Stream);
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -831,12 +853,15 @@ procedure TIniFileEx.AppendToTextualFile(const FileName: String);
 var
   FileStream: TFileStream;
 begin
-FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenReadWrite or fmShareDenyWrite);
-try
-  AppendToTextualStream(FileStream);
-finally
-  FileStream.Free;
-end;
+If not fSettings.ReadOnly then
+  begin
+    FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenReadWrite or fmShareDenyWrite);
+    try
+      AppendToTextualStream(FileStream);
+    finally
+      FileStream.Free;
+    end;
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -845,22 +870,28 @@ procedure TIniFileEx.AppendToBinaryFile(const FileName: String);
 var
   FileStream: TFileStream;
 begin
-FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenReadWrite or fmShareDenyWrite);
-try
-  AppendToBinaryStream(FileStream);
-finally
-  FileStream.Free;
-end;
+If not fSettings.ReadOnly then
+  begin
+    FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenReadWrite or fmShareDenyWrite);
+    try
+      AppendToBinaryStream(FileStream);
+    finally
+      FileStream.Free;
+    end;
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TIniFileEx.AppendToFile(const FileName: String);
 begin
-If fParser.IsBinaryIniFile(FileName) then
-  AppendToBinaryFile(FileName)
-else
-  AppendToTextualFile(FileName);
+If not fSettings.ReadOnly then
+  begin
+    If fParser.IsBinaryIniFile(FileName) then
+      AppendToBinaryFile(FileName)
+    else
+      AppendToTextualFile(FileName);
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -931,7 +962,7 @@ procedure TIniFileEx.Flush;
 var
   OldDupBehavior: TIFXDuplicityBehavior;
 begin
-If fSettings.WorkingStyle <> iwsStandalone then
+If (fSettings.WorkingStyle <> iwsStandalone) and not fSettings.ReadOnly then
   begin
     OldDupBehavior := fSettings.DuplicityBehavior;
     try
