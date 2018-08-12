@@ -768,14 +768,22 @@ end;
 procedure TIniFileEx.AppendToTextualStream(Stream: TStream);
 var
   ExtIniFile: TIniFileEx;
+  StreamPos:  Int64;
 begin
 ExtIniFile := TIniFileEx.Create;
 try
   ExtIniFile.Settings := fSettings;
+  ExtIniFile.ReadOnly := False;
   ExtIniFile.SettingsPtr^.WorkingStyle := iwsStandalone;
-  ExtIniFile.LoadFromTextualStream(Stream);
-  ExtIniFile.Append(Self);
+  StreamPos := Stream.Position;
+  try
+    ExtIniFile.LoadFromTextualStream(Stream);
+    ExtIniFile.Append(Self);
+  finally
+    Stream.Position := StreamPos;
+  end;
   ExtIniFile.SaveToTextualStream(Stream);
+  Stream.Size := Stream.Position;
 finally
   ExtIniFile.Free;
 end;
@@ -786,14 +794,22 @@ end;
 procedure TIniFileEx.AppendToBinaryStream(Stream: TStream);
 var
   ExtIniFile: TIniFileEx;
+  StreamPos:  Int64;
 begin
 ExtIniFile := TIniFileEx.Create;
 try
   ExtIniFile.Settings := fSettings;
-  ExtIniFile.SettingsPtr^.WorkingStyle := iwsStandalone;  
-  ExtIniFile.LoadFromBinaryStream(Stream);
-  ExtIniFile.Append(Self);
+  ExtIniFile.ReadOnly := False;
+  ExtIniFile.SettingsPtr^.WorkingStyle := iwsStandalone;
+  StreamPos := Stream.Position;
+  try
+    ExtIniFile.LoadFromBinaryStream(Stream);
+    ExtIniFile.Append(Self);
+  finally
+    Stream.Position := StreamPos;
+  end;    
   ExtIniFile.SaveToBinaryStream(Stream);
+  Stream.Size := Stream.Position;
 finally
   ExtIniFile.Free;
 end;
@@ -815,7 +831,7 @@ procedure TIniFileEx.AppendToTextualFile(const FileName: String);
 var
   FileStream: TFileStream;
 begin
-FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenReadWrite or fmShareDenyWrite);
 try
   AppendToTextualStream(FileStream);
 finally
@@ -829,7 +845,7 @@ procedure TIniFileEx.AppendToBinaryFile(const FileName: String);
 var
   FileStream: TFileStream;
 begin
-FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenReadWrite or fmShareDenyWrite);
 try
   AppendToBinaryStream(FileStream);
 finally
@@ -948,12 +964,14 @@ If fSettings.WorkingStyle <> iwsStandalone then
       If Clear then
         case fSettings.WorkingStyle of
           iwsOnStream:  LoadFromStream(fSettings.WorkingStream);
-          iwsOnFile:    LoadFromFile(fSettings.WorkingFile);
+          iwsOnFile:    If FileExists(StrToRTL(fSettings.WorkingFile)) then
+                          LoadFromFile(fSettings.WorkingFile);
         end
       else
         case fSettings.WorkingStyle of
           iwsOnStream:  AppendFromStream(fSettings.WorkingStream);
-          iwsOnFile:    AppendFromFile(fSettings.WorkingFile);
+          iwsOnFile:    If FileExists(StrToRTL(fSettings.WorkingFile)) then
+                          AppendFromFile(fSettings.WorkingFile);
         end;
     finally
       fSettings.DuplicityBehavior := OldDupBehavior;
@@ -1056,7 +1074,7 @@ If not fSettings.ReadOnly and (Ini.SectionCount > 0) then
             // ... and copy only keys
             For j := ExtFileNode[i].LowIndex to ExtFileNode[i].HighIndex do
               begin
-                KIdx := fFileNode[SIdx].IndexOfKey(ExtFileNode[i].NameStr);
+                KIdx := fFileNode[SIdx].IndexOfKey(ExtFileNode[i][j].NameStr);
                 If KIdx >= 0 then
                   // key of this name is already present, decide what to do...
                   case fSettings.DuplicityBehavior of
