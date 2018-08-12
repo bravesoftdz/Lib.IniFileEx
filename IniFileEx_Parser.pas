@@ -11,9 +11,9 @@
 
     Parser class used for writing and reading of actual INI files
 
-  ©František Milt 2018-07-09
+  ©František Milt 2018-08-12
 
-  Version 1.0
+  Version 1.0.1
 
   NOTE - library needs extensive testing
 

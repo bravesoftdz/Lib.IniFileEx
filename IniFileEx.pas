@@ -11,9 +11,9 @@
 
     Main class
 
-  ©František Milt 2018-07-09
+  ©František Milt 2018-08-12
 
-  Version 1.0
+  Version 1.0.1
 
   NOTE - library needs extensive testing
 
@@ -587,7 +587,8 @@ inherited Create;
 Initialize;
 fSettings.WorkingStyle := iwsOnFile;
 fSettings.WorkingFile := FileName;
-LoadFromFile(FileName);
+If FileExists(StrToRTL(FileName)) then
+  LoadFromFile(FileName);
 end;
 
 //------------------------------------------------------------------------------
@@ -771,6 +772,7 @@ begin
 ExtIniFile := TIniFileEx.Create;
 try
   ExtIniFile.Settings := fSettings;
+  ExtIniFile.SettingsPtr^.WorkingStyle := iwsStandalone;
   ExtIniFile.LoadFromTextualStream(Stream);
   ExtIniFile.Append(Self);
   ExtIniFile.SaveToTextualStream(Stream);
@@ -788,6 +790,7 @@ begin
 ExtIniFile := TIniFileEx.Create;
 try
   ExtIniFile.Settings := fSettings;
+  ExtIniFile.SettingsPtr^.WorkingStyle := iwsStandalone;  
   ExtIniFile.LoadFromBinaryStream(Stream);
   ExtIniFile.Append(Self);
   ExtIniFile.SaveToBinaryStream(Stream);
@@ -812,7 +815,7 @@ procedure TIniFileEx.AppendToTextualFile(const FileName: String);
 var
   FileStream: TFileStream;
 begin
-FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
 try
   AppendToTextualStream(FileStream);
 finally
@@ -826,7 +829,7 @@ procedure TIniFileEx.AppendToBinaryFile(const FileName: String);
 var
   FileStream: TFileStream;
 begin
-FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
 try
   AppendToBinaryStream(FileStream);
 finally
@@ -919,7 +922,11 @@ If fSettings.WorkingStyle <> iwsStandalone then
       fSettings.DuplicityBehavior := idbReplace;
       case fSettings.WorkingStyle of
         iwsOnStream:  AppendToStream(fSettings.WorkingStream);
-        iwsOnFile:    AppendToFile(fSettings.WorkingFile);
+        iwsOnFile:    If FileExists(StrToRTL(fSettings.WorkingFile)) then
+                        AppendToFile(fSettings.WorkingFile)
+                      else
+                        If fFileNode.Count > 0 then
+                          SaveToFile(fSettings.WorkingFile);
       end;
     finally
       fSettings.DuplicityBehavior := OldDupBehavior;
