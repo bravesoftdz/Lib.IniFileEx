@@ -11,9 +11,9 @@
 
     Common types, structures and constants
 
-  ©František Milt 2018-08-12
+  ©František Milt 2018-09-20
 
-  Version 1.0.1
+  Version 1.0.2
 
   NOTE - library needs extensive testing
 

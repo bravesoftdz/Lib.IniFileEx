@@ -11,9 +11,9 @@
 
     Internal ini file structure objects (nodes)
 
-  ©František Milt 2018-08-12
+  ©František Milt 2018-09-20
 
-  Version 1.0.1
+  Version 1.0.2
 
   NOTE - library needs extensive testing
 
@@ -1721,24 +1721,32 @@ procedure TIFXSectionNode.SortKeys(Reversed: Boolean = False);
 
   procedure QuickSort(Left,Right: Integer; Coef: Integer);
   var
-    Pivot:  TIFXString;
-    Idx,i:  Integer;
+    PivotIdx,LowIdx,HighIdx: Integer;
   begin
-    If Left < Right  then
-      begin
-        ExchangeKeys((Left + Right) shr 1,Right);
-        Pivot := fKeys[Right].NameStr;
-        Idx := Left;
-        For i := Left to Pred(Right) do
-          If (IFXCompareText(Pivot,fKeys[i].NameStr) * Coef) > 0 then
-            begin
-              ExchangeKeys(i,idx);
-              Inc(Idx);
-            end;
-        ExchangeKeys(Idx,Right);
-        QuickSort(Left,Idx - 1,Coef);
-        QuickSort(Idx + 1, Right,Coef);
-      end;
+    repeat
+      LowIdx := Left;
+      HighIdx := Right;
+      PivotIdx := (Left + Right) shr 1;
+      repeat
+        while (IFXCompareText(fKeys[PivotIdx].NameStr,fKeys[LowIdx].NameStr) * Coef) > 0 do
+          Inc(LowIdx);
+        while (IFXCompareText(fKeys[PivotIdx].NameStr,fKeys[HighIdx].NameStr) * Coef) < 0 do
+          Dec(HighIdx);
+        If LowIdx <= HighIdx then
+          begin
+            ExchangeKeys(LowIdx,HighIdx);
+            If PivotIdx = LowIdx then
+              PivotIdx := HighIdx
+            else If PivotIdx = HighIdx then
+              PivotIdx := LowIdx;
+            Inc(LowIdx);
+            Dec(HighIdx);  
+          end;
+      until LowIdx > HighIdx;
+      If Left < HighIdx then
+        QuickSort(Left,HighIdx,Coef);
+      Left := LowIdx;
+    until LowIdx >= Right;
   end;
 
 begin
@@ -2031,24 +2039,32 @@ procedure TIFXFileNode.SortSections(Reversed: Boolean = False);
 
   procedure QuickSort(Left,Right: Integer; Coef: Integer);
   var
-    Pivot:  TIFXString;
-    Idx,i:  Integer;
+    PivotIdx,LowIdx,HighIdx: Integer;
   begin
-    If Left < Right  then
-      begin
-        ExchangeSections((Left + Right) shr 1,Right);
-        Pivot := fSections[Right].NameStr;
-        Idx := Left;
-        For i := Left to Pred(Right) do
-          If (IFXCompareText(Pivot,fSections[i].NameStr) * Coef) > 0 then
-            begin
-              ExchangeSections(i,idx);
-              Inc(Idx);
-            end;
-        ExchangeSections(Idx,Right);
-        QuickSort(Left,Idx - 1,Coef);
-        QuickSort(Idx + 1, Right,Coef);
-      end;
+    repeat
+      LowIdx := Left;
+      HighIdx := Right;
+      PivotIdx := (Left + Right) shr 1;
+      repeat
+        while (IFXCompareText(fSections[PivotIdx].NameStr,fSections[LowIdx].NameStr) * Coef) > 0 do
+          Inc(LowIdx);
+        while (IFXCompareText(fSections[PivotIdx].NameStr,fSections[HighIdx].NameStr) * Coef) < 0 do
+          Dec(HighIdx);
+        If LowIdx <= HighIdx then
+          begin
+            ExchangeSections(LowIdx,HighIdx);
+            If PivotIdx = LowIdx then
+              PivotIdx := HighIdx
+            else If PivotIdx = HighIdx then
+              PivotIdx := LowIdx;
+            Inc(LowIdx);
+            Dec(HighIdx);  
+          end;
+      until LowIdx > HighIdx;
+      If Left < HighIdx then
+        QuickSort(Left,HighIdx,Coef);
+      Left := LowIdx;
+    until LowIdx >= Right;
   end;
 
 begin
