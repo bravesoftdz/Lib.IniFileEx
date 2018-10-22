@@ -11,9 +11,9 @@
 
     Utility functions
 
-  ©František Milt 2018-09-20
+  ©František Milt 2018-10-21
 
-  Version 1.0.2
+  Version 1.0.3
 
   NOTE - library needs extensive testing
 
@@ -32,6 +32,7 @@
     ZLibUtils           - github.com/ncs-sniper/Lib.ZLibUtils
     AES                 - github.com/ncs-sniper/Lib.AES
   * SimpleCPUID         - github.com/ncs-sniper/Lib.SimpleCPUID
+    IndexSorters        - github.com/ncs-sniper/Lib.IndexSorters
 
   SimpleCPUID is required only when PurePascal symbol is not defined.
 

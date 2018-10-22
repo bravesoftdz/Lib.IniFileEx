@@ -11,9 +11,9 @@
 
     Internal ini file structure objects (nodes)
 
-  ©František Milt 2018-09-20
+  ©František Milt 2018-10-21
 
-  Version 1.0.2
+  Version 1.0.3
 
   NOTE - library needs extensive testing
 
@@ -32,6 +32,7 @@
     ZLibUtils           - github.com/ncs-sniper/Lib.ZLibUtils
     AES                 - github.com/ncs-sniper/Lib.AES
   * SimpleCPUID         - github.com/ncs-sniper/Lib.SimpleCPUID
+    IndexSorters        - github.com/ncs-sniper/Lib.IndexSorters
 
   SimpleCPUID is required only when PurePascal symbol is not defined.
 
@@ -193,6 +194,7 @@ type
     procedure SetCapacity(Value: Integer); override;
     Function GetCount: Integer; override;
     procedure SetCount(Value: Integer); override;
+    Function CompareKeys(Idx1,Idx2: Integer): Integer; virtual;
   public
     constructor Create(const SectionName: TIFXString; SettingsPtr: PIFXSettings); overload;
     constructor Create(SettingsPtr: PIFXSettings); overload;
@@ -245,6 +247,7 @@ type
     procedure SetCapacity(Value: Integer); override;
     Function GetCount: Integer; override;
     procedure SetCount(Value: Integer); override;
+    Function CompareSections(Idx1,Idx2: Integer): Integer; virtual;
     procedure KeyCreateHandler(Sender: TObject; Section: TIFXSectionNode; Key: TIFXKeyNode); virtual;
     procedure KeyDestroyHandler(Sender: TObject; Section: TIFXSectionNode; Key: TIFXKeyNode); virtual;
   public
@@ -286,9 +289,9 @@ implementation
 
 uses
   SysUtils,
-  BinTextEnc, FloatHex,
+  BinTextEnc, FloatHex, IndexSorters,
   //inline expansion...
-{$IF not Defined(FPC) and Defined(CanInline)}CRC32,StrRect,{$IFEND}
+{$IF not Defined(FPC) and Defined(CanInline)}CRC32, StrRect,{$IFEND}
   IniFileEx_Utils;
 
 {$IFDEF FPC_DisableWarns}
@@ -1518,6 +1521,13 @@ begin
 end;
 {$IFDEF FPCDWM}{$POP}{$ENDIF}
 
+//------------------------------------------------------------------------------
+
+Function TIFXSectionNode.CompareKeys(Idx1,Idx2: Integer): Integer;
+begin
+Result := IFXCompareText(fKeys[Idx1].NameStr,fKeys[Idx2].NameStr);
+end;
+
 //==============================================================================
 
 constructor TIFXSectionNode.Create(const SectionName: TIFXString; SettingsPtr: PIFXSettings);
@@ -1718,41 +1728,20 @@ end;
 //------------------------------------------------------------------------------
 
 procedure TIFXSectionNode.SortKeys(Reversed: Boolean = False);
-
-  procedure QuickSort(Left,Right: Integer; Coef: Integer);
-  var
-    PivotIdx,LowIdx,HighIdx: Integer;
-  begin
-    repeat
-      LowIdx := Left;
-      HighIdx := Right;
-      PivotIdx := (Left + Right) shr 1;
-      repeat
-        while (IFXCompareText(fKeys[PivotIdx].NameStr,fKeys[LowIdx].NameStr) * Coef) > 0 do
-          Inc(LowIdx);
-        while (IFXCompareText(fKeys[PivotIdx].NameStr,fKeys[HighIdx].NameStr) * Coef) < 0 do
-          Dec(HighIdx);
-        If LowIdx <= HighIdx then
-          begin
-            ExchangeKeys(LowIdx,HighIdx);
-            If PivotIdx = LowIdx then
-              PivotIdx := HighIdx
-            else If PivotIdx = HighIdx then
-              PivotIdx := LowIdx;
-            Inc(LowIdx);
-            Dec(HighIdx);  
-          end;
-      until LowIdx > HighIdx;
-      If Left < HighIdx then
-        QuickSort(Left,HighIdx,Coef);
-      Left := LowIdx;
-    until LowIdx >= Right;
-  end;
-
+var
+  Sorter: TIndexQuickSorter;
 begin
 If fCount > 1 then
-  If Reversed then QuickSort(LowIndex,HighIndex,-1)
-    else QuickSort(LowIndex,HighIndex,1);
+  begin
+    Sorter := TIndexQuickSorter.Create(CompareKeys,ExchangeKeys);
+    try
+      Sorter.ReversedCompare := True;
+      Sorter.Reversed := Reversed;
+      Sorter.Sort(LowIndex,HighIndex);
+    finally
+      Sorter.Free;
+    end;
+  end;
 end;
 
 
@@ -1817,6 +1806,13 @@ begin
 // nothing to do here
 end;
 {$IFDEF FPCDWM}{$POP}{$ENDIF}
+
+//------------------------------------------------------------------------------
+
+Function TIFXFileNode.CompareSections(Idx1,Idx2: Integer): Integer;
+begin
+Result := IFXCompareText(fSections[Idx1].NameStr,fSections[Idx2].NameStr);
+end;
 
 //------------------------------------------------------------------------------
 
@@ -2036,41 +2032,20 @@ end;
 //------------------------------------------------------------------------------
 
 procedure TIFXFileNode.SortSections(Reversed: Boolean = False);
-
-  procedure QuickSort(Left,Right: Integer; Coef: Integer);
-  var
-    PivotIdx,LowIdx,HighIdx: Integer;
-  begin
-    repeat
-      LowIdx := Left;
-      HighIdx := Right;
-      PivotIdx := (Left + Right) shr 1;
-      repeat
-        while (IFXCompareText(fSections[PivotIdx].NameStr,fSections[LowIdx].NameStr) * Coef) > 0 do
-          Inc(LowIdx);
-        while (IFXCompareText(fSections[PivotIdx].NameStr,fSections[HighIdx].NameStr) * Coef) < 0 do
-          Dec(HighIdx);
-        If LowIdx <= HighIdx then
-          begin
-            ExchangeSections(LowIdx,HighIdx);
-            If PivotIdx = LowIdx then
-              PivotIdx := HighIdx
-            else If PivotIdx = HighIdx then
-              PivotIdx := LowIdx;
-            Inc(LowIdx);
-            Dec(HighIdx);  
-          end;
-      until LowIdx > HighIdx;
-      If Left < HighIdx then
-        QuickSort(Left,HighIdx,Coef);
-      Left := LowIdx;
-    until LowIdx >= Right;
-  end;
-
+var
+  Sorter: TIndexQuickSorter;
 begin
 If fCount > 1 then
-  If Reversed then QuickSort(LowIndex,HighIndex,-1)
-    else QuickSort(LowIndex,HighIndex,1);
+  begin
+    Sorter := TIndexQuickSorter.Create(CompareSections,ExchangeSections);
+    try
+      Sorter.ReversedCompare := True;
+      Sorter.Reversed := Reversed;
+      Sorter.Sort(LowIndex,HighIndex);
+    finally
+      Sorter.Free;
+    end;
+  end;
 end;
 
 //------------------------------------------------------------------------------
