@@ -32,7 +32,7 @@
     ZLibUtils           - github.com/ncs-sniper/Lib.ZLibUtils
     AES                 - github.com/ncs-sniper/Lib.AES
   * SimpleCPUID         - github.com/ncs-sniper/Lib.SimpleCPUID
-    IndexSorters        - github.com/ncs-sniper/Lib.IndexSorters
+    ListSorters         - github.com/ncs-sniper/Lib.ListSorters
 
   SimpleCPUID is required only when PurePascal symbol is not defined.
 

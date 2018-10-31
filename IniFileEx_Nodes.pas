@@ -32,7 +32,7 @@
     ZLibUtils           - github.com/ncs-sniper/Lib.ZLibUtils
     AES                 - github.com/ncs-sniper/Lib.AES
   * SimpleCPUID         - github.com/ncs-sniper/Lib.SimpleCPUID
-    IndexSorters        - github.com/ncs-sniper/Lib.IndexSorters
+    ListSorters         - github.com/ncs-sniper/Lib.ListSorters
 
   SimpleCPUID is required only when PurePascal symbol is not defined.
 
@@ -289,7 +289,7 @@ implementation
 
 uses
   SysUtils,
-  BinTextEnc, FloatHex, IndexSorters,
+  BinTextEnc, FloatHex, ListSorters,
   //inline expansion...
 {$IF not Defined(FPC) and Defined(CanInline)}CRC32, StrRect,{$IFEND}
   IniFileEx_Utils;
@@ -1729,11 +1729,11 @@ end;
 
 procedure TIFXSectionNode.SortKeys(Reversed: Boolean = False);
 var
-  Sorter: TIndexQuickSorter;
+  Sorter: TListQuickSorter;
 begin
 If fCount > 1 then
   begin
-    Sorter := TIndexQuickSorter.Create(CompareKeys,ExchangeKeys);
+    Sorter := TListQuickSorter.Create(CompareKeys,ExchangeKeys);
     try
       Sorter.ReversedCompare := True;
       Sorter.Reversed := Reversed;
@@ -2033,11 +2033,11 @@ end;
 
 procedure TIFXFileNode.SortSections(Reversed: Boolean = False);
 var
-  Sorter: TIndexQuickSorter;
+  Sorter: TListQuickSorter;
 begin
 If fCount > 1 then
   begin
-    Sorter := TIndexQuickSorter.Create(CompareSections,ExchangeSections);
+    Sorter := TListQuickSorter.Create(CompareSections,ExchangeSections);
     try
       Sorter.ReversedCompare := True;
       Sorter.Reversed := Reversed;
